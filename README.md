@@ -30,7 +30,7 @@
             // 这个方法是用来调用原始方法的
             MethodInfo miProxy = type.GetMethod("ProxyClearLog", BindingFlags.Static | BindingFlags.NonPublic);
 
-            // 创建一个 Hookder 并 Install 就OK啦, 之后无论哪个代码再调用原始方法都会重定向到
+            // 创建一个 Hooker 并 Install 就OK啦, 之后无论哪个代码再调用原始方法都会重定向到
             //  我们写的方法ヾ(ﾟ∀ﾟゞ)
             _hooker = new MethodHooker(miTarget, miReplacement, miProxy);
             bool ret = _hooker.Install();
