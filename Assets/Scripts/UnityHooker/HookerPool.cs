@@ -13,11 +13,13 @@ public static class HookerPool
     public static void AddHooker(MethodInfo method, MethodHooker hooker)
     {
         MethodHooker preHooker;
-        if(_hookers.TryGetValue(method, out preHooker))
+        if (_hookers.TryGetValue(method, out preHooker))
         {
             preHooker.Uninstall();
             _hookers[method] = hooker;
         }
+        else
+            _hookers.Add(method, hooker);
     }
 
     public static void RemoveHooker(MethodInfo method)
