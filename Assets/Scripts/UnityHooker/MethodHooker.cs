@@ -92,6 +92,7 @@ public unsafe class MethodHooker
         0x41, 0xFF, 0xE3                                // jmp r11
     };
 
+    // TODO 改成动态计算长度
     private static readonly byte[] s_proxyBuff_4 = new byte[] // .net 4.x
     {
         0x55,                                       // push rbp
@@ -114,6 +115,15 @@ public unsafe class MethodHooker
         // _jmpBuff
     };
 
+    private static readonly byte[] s_proxyBuff_2_short = new byte[] // .net 2.x short
+    {
+        0x55,                                  // push rbp
+        0x48, 0x8B, 0xEC,                      // mov rbp,rsp
+        0x48, 0x83, 0xEC, 0x50,                // sub rsp,50
+        0x48, 0x89, 0x4D, 0xE0,                // mov qword ptr ss:[rbp-20],rcx
+        0x41, 0xBB, 0x00, 0x00, 0xEF, 0x0E     // mov r11d,EEF0000
+    };
+
     /// <summary>
     /// 代码类型
     /// </summary>
@@ -121,6 +131,7 @@ public unsafe class MethodHooker
     {
         Net4, 
         Net2,
+        Net2_Short
     }
 
     private byte[]      _jmpBuff;
@@ -195,12 +206,23 @@ public unsafe class MethodHooker
 
             pTarget += 3;
         }
+        else
+            return false;
 
         if (*pTarget++ != 0x48) return false;
         if (*pTarget++ != 0x89) return false;
         pTarget += 2;
-        if (*pTarget++ != 0x48) return false;
-        if (*pTarget++ != 0x89) return false;
+
+        if((*pTarget == 0x41) && (*(pTarget + 1) == 0xBB)) // net2_short
+        {
+            _codeType = CodeType.Net2_Short;
+            _proxyBuff = new byte[s_proxyBuff_2_short.Length];
+        }
+        else
+        {
+            if (*pTarget++ != 0x48) return false;
+            if (*pTarget++ != 0x89) return false;
+        }
 
         return true;
     }
