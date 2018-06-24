@@ -28,7 +28,11 @@ public static class PinnedLog
     {
         if(_hooker == null)
         {
+#if UNITY_2017 || UNITY_2018
             Type type = Type.GetType("UnityEditor.LogEntries,UnityEditor.dll");
+#else
+            Type type = Type.GetType("UnityEditorInternal.LogEntries,UnityEditor.dll");
+#endif
             MethodInfo miTarget = type.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
 
             type = typeof(PinnedLog);

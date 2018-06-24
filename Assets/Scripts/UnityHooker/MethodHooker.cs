@@ -11,7 +11,7 @@ using System.Reflection;
 
 /*
 >>>>>>> 原始 UnityEditor.LogEntries.Clear 一型(.net 4.x)
- 0000000000403A00 < | 55                                 | push rbp                                     |
+0000000000403A00 < | 55                                 | push rbp                                     |
 0000000000403A01   | 48 8B EC                           | mov rbp,rsp                                  |
 0000000000403A04   | 48 81 EC 80 00 00 00               | sub rsp,80                                   |
 0000000000403A0B   | 48 89 65 B0                        | mov qword ptr ss:[rbp-50],rsp                |
@@ -64,14 +64,14 @@ using System.Reflection;
 0000000000403EC9   | 41 FF D3                           | call r11                                     |
 0000000000403ECC   | 48 83 C4 20                        | add rsp,20                                   |
 
->>>>> RedirectCall(13字节)
+>>>>> ProxyCall(13字节)
 0000000000403C0A   | 49 BB 08 2D 1E 1A FE 7F 00 00      | mov r11,7FFE1A1E2D08                         |
 0000000000403C14   | 41 FF E3                           | jmp r11                                      |
  */
 
 
 /// <summary>
-/// Hook 类，用来 Hook 某个方法
+/// Hook 类，用来 Hook 某个 C# 方法
 /// </summary>
 public unsafe class MethodHooker
 {
@@ -92,7 +92,7 @@ public unsafe class MethodHooker
         0x41, 0xFF, 0xE3                                // jmp r11
     };
 
-    private static readonly byte[] s_proxyBuff_1 = new byte[]
+    private static readonly byte[] s_proxyBuff_4 = new byte[] // .net 4.x
     {
         0x55,                                       // push rbp
         0x48, 0x8B, 0xEC,                           // mov rbp,rsp
@@ -103,7 +103,7 @@ public unsafe class MethodHooker
         // _jmpBuff
     };
 
-    private static readonly byte[] s_proxyBuff_2 = new byte[]
+    private static readonly byte[] s_proxyBuff_2 = new byte[] // .net 2.x
     {
         0x55,                       // push rbp
         0x48, 0x8B, 0xEC,           // mov rbp,rsp
@@ -115,7 +115,7 @@ public unsafe class MethodHooker
     };
 
     /// <summary>
-    /// 代码类型，Fist 为 .net 2.x, Second 为 .net 4.x
+    /// 代码类型
     /// </summary>
     private enum CodeType
     {
@@ -177,14 +177,14 @@ public unsafe class MethodHooker
 
         for(int i = 0; i <= 4; i++)
         {
-            if (*pTarget++ != s_proxyBuff_1[i])
+            if (*pTarget++ != s_proxyBuff_4[i])
                 return false;
         }
 
         if (*pTarget == 0x81) // .net 4.x
         {
             _codeType = CodeType.Net4;
-            _proxyBuff = new byte[s_proxyBuff_1.Length];
+            _proxyBuff = new byte[s_proxyBuff_4.Length];
 
             pTarget += 6;
         }
@@ -206,7 +206,7 @@ public unsafe class MethodHooker
     }
 
     /// <summary>
-    /// 因为原始数据不同版本Unity 有稍许不一致，因此把数据备份一下
+    /// 因为原始数据不同 Mono 版本有稍许不一致，因此把数据备份一下
     /// </summary>
     private void BackupHeader()
     {
@@ -234,11 +234,6 @@ public unsafe class MethodHooker
     /// </summary>
     private void PatchProxyMethod()
     {
-        if(_codeType == CodeType.Net4)
-            Array.Copy(s_proxyBuff_1, _proxyBuff, _proxyBuff.Length);
-        else
-            Array.Copy(s_proxyBuff_2, _proxyBuff, _proxyBuff.Length);
-
         byte* pProxy = (byte*)_proxyPtr.ToPointer();
         for (int i = 0; i < _proxyBuff.Length; i++)     // 先填充头
             *pProxy++ = _proxyBuff[i];
