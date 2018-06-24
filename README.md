@@ -6,6 +6,9 @@
 * 目前测试支持 unity 2017 与 unity 2018。
 * 使用很方便，在C#内定义签名与原始方法相同的两个方法然后注册一下就能用了。
 
+## 预览
+![image](Preview/Preview.gif)
+
 ## 原理
 * MethodInfo.MethodHandle.GetFunctionPointer().ToPointer() 指向了 jit 后的 native 代码，因此修改此地址的代码即可以修改功能。
 * 通过一系列跳转就可以巧妙的替换原函数实现，同时也保留调用原函数的功能。
