@@ -89,14 +89,14 @@ public unsafe class MethodHooker
         _proxyPtr       = _proxyMethod.MethodHandle.GetFunctionPointer();
 
         _jmpBuff = new byte[s_jmpBuff.Length];
-
-        HookerPool.AddHooker(targetMethod, this);
     }
 
     public void Install()
     {
         if (isHooked)
             return;
+
+        HookerPool.AddHooker(_targetMethod, this);
 
         InitProxyBuff();
         BackupHeader();
