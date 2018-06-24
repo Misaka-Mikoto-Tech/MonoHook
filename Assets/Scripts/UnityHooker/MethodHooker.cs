@@ -89,6 +89,8 @@ public unsafe class MethodHooker
         _proxyPtr       = _proxyMethod.MethodHandle.GetFunctionPointer();
 
         _jmpBuff = new byte[s_jmpBuff.Length];
+
+        HookerPool.AddHooker(targetMethod, this);
     }
 
     public void Install()
@@ -112,6 +114,9 @@ public unsafe class MethodHooker
         byte* pTarget = (byte*)_targetPtr.ToPointer();
         for (int i = 0; i < _proxyBuff.Length; i++)
             *pTarget++ = _proxyBuff[i];
+
+        isHooked = false;
+        HookerPool.RemoveHooker(_targetMethod);
     }
 
     #region private
