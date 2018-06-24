@@ -18,6 +18,10 @@ public class Test : MonoBehaviour
         Debug.LogError("普通错误");
 
         _msgId = PinnedLog.AddMsg("我是不会被清掉的日志");
+
+        // 测试实例方法替换
+        InstanceMethodTest test = new InstanceMethodTest();
+        test.Test();
     }
 
     public void OnBtnClick()
