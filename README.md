@@ -36,9 +36,7 @@
             // 创建一个 Hooker 并 Install 就OK啦, 之后无论哪个代码再调用原始方法都会重定向到
             //  我们写的方法ヾ(ﾟ∀ﾟゞ)
             _hooker = new MethodHooker(miTarget, miReplacement, miProxy);
-            bool ret = _hooker.Install();
-            if (!ret)
-                UnityEngine.Debug.LogError("注册 ClearLog 钩子失败");
+            _hooker.Install();
         }
     }
 ```

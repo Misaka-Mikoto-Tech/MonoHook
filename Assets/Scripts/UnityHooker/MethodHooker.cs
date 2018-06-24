@@ -26,24 +26,6 @@ using System.Reflection;
 0000000000403A2F   | 49 BB 00 2D 1E 1A FE 7F 00 00      | mov r11,7FFE1A1E2D00                         |
 0000000000403A39   | 4C 89 5D B8                        | mov qword ptr ss:[rbp-48],r11                |
 0000000000403A3D   | 49 BB 08 2D 1E 1A FE 7F 00 00      | mov r11,7FFE1A1E2D08                         |
-0000000000403A47   | 4C 89 5D C0                        | mov qword ptr ss:[rbp-40],r11                |
-0000000000403A4B   | 65 48 8B 04 25 80 17 00 00         | mov rax,qword ptr gs:[1780]                  | rax:EntryPoint
-0000000000403A54   | 48 85 C0                           | test rax,rax                                 | rax:EntryPoint
-0000000000403A57   | 48 74 07                           | je mgd.403A61                                |
-0000000000403A5A   | 48 8B 80 C8 01 00 00               | mov rax,qword ptr ds:[rax+1C8]               | rax:EntryPoint, rax+1C8:sub_403BD0+8
-0000000000403A61   | 48 8B F0                           | mov rsi,rax                                  | rax:EntryPoint
-0000000000403A64   | 48 83 C6 10                        | add rsi,10                                   |
-0000000000403A68   | 48 8B C5                           | mov rax,rbp                                  | rax:EntryPoint
-0000000000403A6B   | 48 83 C0 A0                        | add rax,FFFFFFFFFFFFFFA0                     | rax:EntryPoint
-0000000000403A6F   | 48 8B 0E                           | mov rcx,qword ptr ds:[rsi]                   |
-0000000000403A72   | 48 89 4D A0                        | mov qword ptr ss:[rbp-60],rcx                |
-0000000000403A76   | 48 89 06                           | mov qword ptr ds:[rsi],rax                   | rax:EntryPoint
-0000000000403A79   | 41 BB 00 00 00 00                  | mov r11d,0                                   |
-0000000000403A7F   | 4D 85 DB                           | test r11,r11                                 |
-0000000000403A82   | 74 07                              | je mgd.403A8B                                |
-0000000000403A84   | 4C 8B 5D C0                        | mov r11,qword ptr ss:[rbp-40]                |
-0000000000403A88   | 41 FF 13                           | call qword ptr ds:[r11]                      |
-0000000000403A8B   | 90                                 | nop                                          |
 
 
 >>>>>>> 二型(.net 2.x)
@@ -92,52 +74,9 @@ public unsafe class MethodHooker
         0x41, 0xFF, 0xE3                                // jmp r11
     };
 
-    // TODO 改成动态计算长度
-    private static readonly byte[] s_proxyBuff_4 = new byte[] // .net 4.x
-    {
-        0x55,                                       // push rbp
-        0x48, 0x8B, 0xEC,                           // mov rbp,rsp
-        0x48, 0x81, 0xEC, 0x80, 0x00, 0x00, 0x00,   // sub rsp,80 // unity 2017 是 90, 因此改为从原始数据 copy
-        0x48, 0x89, 0x65, 0xB0,                     // mov qword ptr ss:[rbp-50],rsp
-        0x48, 0x89, 0x6D, 0xA8,                     // mov qword ptr ss:[rbp-58],rbp
-
-        // _jmpBuff
-    };
-
-    private static readonly byte[] s_proxyBuff_2 = new byte[] // .net 2.x
-    {
-        0x55,                       // push rbp
-        0x48, 0x8B, 0xEC,           // mov rbp,rsp
-        0x48, 0x83, 0xEC, 0x70,     // sub rsp,70
-        0x48, 0x89, 0x65, 0xC8,     // mov qword ptr ss:[rbp-38],rsp
-        0x48, 0x89, 0x5D, 0xB8      // mov qword ptr ss:[rbp-48],rbx
-
-        // _jmpBuff
-    };
-
-    private static readonly byte[] s_proxyBuff_2_short = new byte[] // .net 2.x short
-    {
-        0x55,                                  // push rbp
-        0x48, 0x8B, 0xEC,                      // mov rbp,rsp
-        0x48, 0x83, 0xEC, 0x50,                // sub rsp,50
-        0x48, 0x89, 0x4D, 0xE0,                // mov qword ptr ss:[rbp-20],rcx
-        0x41, 0xBB, 0x00, 0x00, 0xEF, 0x0E     // mov r11d,EEF0000
-    };
-
-    /// <summary>
-    /// 代码类型
-    /// </summary>
-    private enum CodeType
-    {
-        Net4, 
-        Net2,
-        Net2_Short
-    }
 
     private byte[]      _jmpBuff;
     private byte[]      _proxyBuff;
-    private CodeType    _codeType;
-    
 
     public MethodHooker(MethodInfo targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod)
     {
@@ -152,19 +91,17 @@ public unsafe class MethodHooker
         _jmpBuff = new byte[s_jmpBuff.Length];
     }
 
-    public bool Install()
+    public void Install()
     {
         if (isHooked)
-            return true;
-        if (!ValidateTargetCode())
-            return false;
+            return;
 
+        InitProxyBuff();
         BackupHeader();
         PatchTargetMethod();
         PatchProxyMethod();
 
         isHooked = true;
-        return true;
     }
 
     public void Uninstall()
@@ -179,56 +116,19 @@ public unsafe class MethodHooker
 
     #region private
     /// <summary>
-    ///  判断此方法是否可以被 Hook, 要求有固定的函数头(绝大部分 jit 代码都是这样的)
+    ///  根据具体指令填充 ProxyBuff
     /// </summary>
     /// <returns></returns>
-    private bool ValidateTargetCode()
+    private void InitProxyBuff()
     {
         byte* pTarget = (byte*)_targetPtr.ToPointer();
 
-        for(int i = 0; i <= 4; i++)
-        {
-            if (*pTarget++ != s_proxyBuff_4[i])
-                return false;
-        }
-
-        if (*pTarget == 0x81) // .net 4.x
-        {
-            _codeType = CodeType.Net4;
-            _proxyBuff = new byte[s_proxyBuff_4.Length];
-
-            pTarget += 6;
-        }
-        else if (*pTarget == 0x83) // .net 2.x
-        {
-            _proxyBuff = new byte[s_proxyBuff_2.Length];
-            _codeType = CodeType.Net2;
-
-            pTarget += 3;
-        }
-        else
-            return false;
-
-        if (*pTarget++ != 0x48) return false;
-        if (*pTarget++ != 0x89) return false;
-        pTarget += 2;
-
-        if((*pTarget == 0x41) && (*(pTarget + 1) == 0xBB)) // net2_short
-        {
-            _codeType = CodeType.Net2_Short;
-            _proxyBuff = new byte[s_proxyBuff_2_short.Length];
-        }
-        else
-        {
-            if (*pTarget++ != 0x48) return false;
-            if (*pTarget++ != 0x89) return false;
-        }
-
-        return true;
+        uint requireSize = DotNetDetour.LDasm.SizeofMinNumByte(pTarget, s_jmpBuff.Length);
+        _proxyBuff = new byte[requireSize];
     }
 
     /// <summary>
-    /// 因为原始数据不同 Mono 版本有稍许不一致，因此把数据备份一下
+    /// 备份原始方法头
     /// </summary>
     private void BackupHeader()
     {

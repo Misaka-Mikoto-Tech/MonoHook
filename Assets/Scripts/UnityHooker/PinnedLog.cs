@@ -40,9 +40,7 @@ public static class PinnedLog
             MethodInfo miProxy = type.GetMethod("ProxyClearLog", BindingFlags.Static | BindingFlags.NonPublic);
 
             _hooker = new MethodHooker(miTarget, miReplacement, miProxy);
-            bool ret = _hooker.Install();
-            if (!ret)
-                UnityEngine.Debug.LogError("注册 ClearLog 钩子失败");
+            _hooker.Install();
         }
     }
 
