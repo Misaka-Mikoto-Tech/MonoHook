@@ -23,8 +23,12 @@ public class B
         Debug.Log("call of B.Func");
         x += 1;
         a.val = 7;
-        // 修改参数后调用原方法
-        return FuncProxy(a, x);
+
+        // 可以调用原方法或者不调用
+        if (x < 100)
+            return FuncProxy(a, x);
+        else
+            return x + 1;
     }
 
     public static int FuncProxy(A a, int x)

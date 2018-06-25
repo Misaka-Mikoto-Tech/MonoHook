@@ -78,7 +78,13 @@ public unsafe class MethodHooker
     private byte[]      _jmpBuff;
     private byte[]      _proxyBuff;
 
-    public MethodHooker(MethodInfo targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod)
+    /// <summary>
+    /// 创建一个 Hooker
+    /// </summary>
+    /// <param name="targetMethod">需要替换的目标方法</param>
+    /// <param name="replacementMethod">准备好的替换方法</param>
+    /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
+    public MethodHooker(MethodInfo targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod = null)
     {
         _targetMethod       = targetMethod;
         _replacementMethod  = replacementMethod;
@@ -86,7 +92,8 @@ public unsafe class MethodHooker
 
         _targetPtr      = _targetMethod.MethodHandle.GetFunctionPointer();
         _replacementPtr = _replacementMethod.MethodHandle.GetFunctionPointer();
-        _proxyPtr       = _proxyMethod.MethodHandle.GetFunctionPointer();
+        if(proxyMethod != null)
+            _proxyPtr       = _proxyMethod.MethodHandle.GetFunctionPointer();
 
         _jmpBuff = new byte[s_jmpBuff.Length];
     }
@@ -161,6 +168,9 @@ public unsafe class MethodHooker
     /// </summary>
     private void PatchProxyMethod()
     {
+        if (_proxyPtr == IntPtr.Zero)
+            return;
+
         byte* pProxy = (byte*)_proxyPtr.ToPointer();
         for (int i = 0; i < _proxyBuff.Length; i++)     // 先填充头
             *pProxy++ = _proxyBuff[i];
