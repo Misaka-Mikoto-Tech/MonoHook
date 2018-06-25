@@ -64,13 +64,12 @@ public unsafe class MethodHooker
     private IntPtr      _replacementPtr;
     private IntPtr      _proxyPtr;
 
-    private static readonly byte[] s_jmpBuff = new byte[] // 直接 jmp 会破坏指定寄存器，因此采用 ret 的方式
+    private static readonly byte[] s_jmpBuff = new byte[]
     {
-        0x50,                                              // push rax
-        0x48,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, // mov rax, $val
-        0x50,                                              // push rax
-        0x48,0x8B,0x44,0x24,0x08,                          // mov rax,qword ptr ss:[rsp+8]
-        0xC2,0x08,0x00                                     // ret 8
+        0x50,                                                           // push rax
+        0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // mov rax,$val
+        0x58,                                                           // pop rax
+        0xFF, 0x25, 0xF1, 0xFF, 0xFF, 0xFF                              // jmp [rip - 0xf]
     };
 
 
