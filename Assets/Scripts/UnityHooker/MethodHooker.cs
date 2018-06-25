@@ -66,10 +66,8 @@ public unsafe class MethodHooker
 
     private static readonly byte[] s_jmpBuff = new byte[]
     {
-        0x50,                                                           // push rax
-        0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // mov rax,$val
-        0x58,                                                           // pop rax
-        0xFF, 0x25, 0xF1, 0xFF, 0xFF, 0xFF                              // jmp [rip - 0xf]
+        0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,         // jmp [rip]
+        0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,   // $val
     };
 
 
@@ -151,7 +149,7 @@ public unsafe class MethodHooker
     private void PatchTargetMethod()
     {
         Array.Copy(s_jmpBuff, _jmpBuff, _jmpBuff.Length);
-        fixed (byte* p = &_jmpBuff[3])
+        fixed (byte* p = &_jmpBuff[6])
         {
             *((ulong*)p) = (ulong)_replacementPtr.ToInt64();
         }
@@ -173,7 +171,7 @@ public unsafe class MethodHooker
         for (int i = 0; i < _proxyBuff.Length; i++)     // 先填充头
             *pProxy++ = _proxyBuff[i];
 
-        fixed (byte* p = &_jmpBuff[3])                  // 将跳转指向原函数跳过头的位置
+        fixed (byte* p = &_jmpBuff[6])                  // 将跳转指向原函数跳过头的位置
         {
             *((ulong*)p) = (ulong)(_targetPtr.ToInt64() + _proxyBuff.Length);
         }
