@@ -46,9 +46,6 @@ using System.Reflection;
 0000000000403EC9   | 41 FF D3                           | call r11                                     |
 0000000000403ECC   | 48 83 C4 20                        | add rsp,20                                   |
 
->>>>> ProxyCall(13字节)
-0000000000403C0A   | 49 BB 08 2D 1E 1A FE 7F 00 00      | mov r11,7FFE1A1E2D08                         |
-0000000000403C14   | 41 FF E3                           | jmp r11                                      |
  */
 
 
@@ -67,11 +64,13 @@ public unsafe class MethodHooker
     private IntPtr      _replacementPtr;
     private IntPtr      _proxyPtr;
 
-    private static readonly byte[] s_jmpBuff = new byte[]
+    private static readonly byte[] s_jmpBuff = new byte[] // 直接 jmp 会破坏指定寄存器，因此采用 ret 的方式
     {
-        0x49, 0xBB,                                     // mov r11,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // $val
-        0x41, 0xFF, 0xE3                                // jmp r11
+        0x50,                                              // push rax
+        0x48,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, // mov rax, $val
+        0x50,                                              // push rax
+        0x48,0x8B,0x44,0x24,0x08,                          // mov rax,qword ptr ss:[rsp+8]
+        0xC2,0x08,0x00                                     // ret 8
     };
 
 
@@ -153,7 +152,7 @@ public unsafe class MethodHooker
     private void PatchTargetMethod()
     {
         Array.Copy(s_jmpBuff, _jmpBuff, _jmpBuff.Length);
-        fixed (byte* p = &_jmpBuff[2])
+        fixed (byte* p = &_jmpBuff[3])
         {
             *((ulong*)p) = (ulong)_replacementPtr.ToInt64();
         }
@@ -175,7 +174,7 @@ public unsafe class MethodHooker
         for (int i = 0; i < _proxyBuff.Length; i++)     // 先填充头
             *pProxy++ = _proxyBuff[i];
 
-        fixed (byte* p = &_jmpBuff[2])                  // 将跳转指向原函数跳过头的位置
+        fixed (byte* p = &_jmpBuff[3])                  // 将跳转指向原函数跳过头的位置
         {
             *((ulong*)p) = (ulong)(_targetPtr.ToInt64() + _proxyBuff.Length);
         }
