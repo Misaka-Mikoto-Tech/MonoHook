@@ -12,7 +12,7 @@
 ## 原理
 * MethodInfo.MethodHandle.GetFunctionPointer().ToPointer() 指向了 jit 后的 native 代码，因此修改此地址的代码即可以修改功能。
 * 通过一系列跳转就可以巧妙的替换原函数实现，同时也保留调用原函数的功能。
-* 本代码的实现与下面 reference 的实现略有不同，原函数的替换逻辑少用2个字节，具体实现可以看代码。
+* 本代码的实现与下面 reference 的实现略有不同，比其使用更少的字节，Hook 成功率更高，具体实现可以看代码。
 
 ## 使用方法
 ```CSharp
