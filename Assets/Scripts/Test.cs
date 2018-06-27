@@ -20,8 +20,12 @@ public class Test : MonoBehaviour
         _msgId = PinnedLog.AddMsg("我是不会被清掉的日志");
 
         // 测试实例方法替换
-        InstanceMethodTest test = new InstanceMethodTest();
-        test.Test();
+        InstanceMethodTest InstanceTest = new InstanceMethodTest();
+        InstanceTest.Test();
+
+        // 测试属性替换
+        PropertyHookTest propTest = new PropertyHookTest();
+        propTest.Test();
     }
 
     public void OnBtnClick()

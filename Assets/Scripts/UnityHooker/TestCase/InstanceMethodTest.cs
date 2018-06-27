@@ -1,4 +1,8 @@
-﻿using System;
+﻿/*
+ * 实例方法 Hook 测试用例
+ * note: 静态方法 Hook 参考 PinnedLog.cs
+ */
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
