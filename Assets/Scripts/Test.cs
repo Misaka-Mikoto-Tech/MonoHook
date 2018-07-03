@@ -26,6 +26,10 @@ public class Test : MonoBehaviour
         // 测试属性替换
         PropertyHookTest propTest = new PropertyHookTest();
         propTest.Test();
+
+        // 参数类型是私有类型的方法替换测试
+        PrivateTypeArgMethodTest privateTypeArgMethodTest = new PrivateTypeArgMethodTest();
+        privateTypeArgMethodTest.Test();
     }
 
     public void OnBtnClick()
