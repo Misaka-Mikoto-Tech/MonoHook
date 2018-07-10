@@ -64,15 +64,36 @@ public unsafe class MethodHooker
     private IntPtr      _replacementPtr;
     private IntPtr      _proxyPtr;
 
-    private static readonly byte[] s_jmpBuff = new byte[]
+    private static readonly byte[] s_jmpBuff;
+    private static readonly byte[] s_jmpBuff_32 = new byte[] // 6 bytes
+    {
+        0x68, 0x00, 0x00, 0x00, 0x00,               // push $val
+        0xC3                                        // ret
+    };
+    private static readonly byte[] s_jmpBuff_64 = new byte[] // 14 bytes
     {
         0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,         // jmp [rip]
         0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,   // $val
     };
+    private static int             s_addrOffset;
 
 
     private byte[]      _jmpBuff;
     private byte[]      _proxyBuff;
+
+    static MethodHooker()
+    {
+        if (IntPtr.Size == 4)
+        {
+            s_jmpBuff       = s_jmpBuff_32;
+            s_addrOffset    = 1;
+        }
+        else
+        {
+            s_jmpBuff       = s_jmpBuff_64;
+            s_addrOffset    = 6;
+        }
+    }
 
     /// <summary>
     /// 创建一个 Hooker
@@ -122,7 +143,7 @@ public unsafe class MethodHooker
         HookerPool.RemoveHooker(_targetMethod);
     }
 
-    #region private
+#region private
     /// <summary>
     ///  根据具体指令填充 ProxyBuff
     /// </summary>
@@ -149,9 +170,12 @@ public unsafe class MethodHooker
     private void PatchTargetMethod()
     {
         Array.Copy(s_jmpBuff, _jmpBuff, _jmpBuff.Length);
-        fixed (byte* p = &_jmpBuff[6])
+        fixed (byte* p = &_jmpBuff[s_addrOffset])
         {
-            *((ulong*)p) = (ulong)_replacementPtr.ToInt64();
+            if(IntPtr.Size == 4)
+                *((uint*)p) = (uint)_replacementPtr.ToInt32();
+            else
+                *((ulong*)p) = (ulong)_replacementPtr.ToInt64();
         }
 
         byte* pTarget = (byte*)_targetPtr.ToPointer();
@@ -171,15 +195,23 @@ public unsafe class MethodHooker
         for (int i = 0; i < _proxyBuff.Length; i++)     // 先填充头
             *pProxy++ = _proxyBuff[i];
 
-        fixed (byte* p = &_jmpBuff[6])                  // 将跳转指向原函数跳过头的位置
+        fixed (byte* p = &_jmpBuff[s_addrOffset])                  // 将跳转指向原函数跳过头的位置
         {
-            *((ulong*)p) = (ulong)(_targetPtr.ToInt64() + _proxyBuff.Length);
+            if (IntPtr.Size == 4)
+            {
+                uint addr = (uint)_targetPtr.ToInt32();
+                addr += (uint)_proxyBuff.Length;
+                * ((uint*)p) = addr;
+            }
+                
+            else
+                *((ulong*)p) = (ulong)_targetPtr.ToInt64() + (ulong)_proxyBuff.Length;
         }
 
         for (int i = 0; i < _jmpBuff.Length; i++)       // 再填充跳转
             *pProxy++ = _jmpBuff[i];
     }
 
-    #endregion
+#endregion
 }
 #endif

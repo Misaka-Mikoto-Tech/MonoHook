@@ -15,7 +15,7 @@ public class PropClassA
         set
         {
             _x = value;
-            UnityEngine.Debug.LogFormat("original prop X set:{0}", value);
+            Debug.LogFormat("original prop X set:{0}", value);
         }
     }
     private int _x;
@@ -49,7 +49,7 @@ public class PropertyHookTest
         Type typeB = typeof(PropClassB);
 
         PropertyInfo pi = typeA.GetProperty("X");
-        MethodInfo miASet = pi.SetMethod;
+        MethodInfo miASet = pi.GetSetMethod();
 
         MethodInfo miBReplace = typeB.GetMethod("PropXSetReplace");
         MethodInfo miBProxy = typeB.GetMethod("PropXSetProxy");

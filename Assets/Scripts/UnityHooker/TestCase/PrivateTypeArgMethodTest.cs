@@ -30,7 +30,7 @@ public class PrivateTestA
     }
     private void InnerFuncTest(InnerClass innerClass, InnerEnum innerEnum)
     {
-        UnityEngine.Debug.LogFormat("InnerTypeTest:innerClass.x:{0}, innerEnum:{1}, val:{2}", innerClass.x, innerEnum.ToString(), _val);
+        Debug.LogFormat("InnerTypeTest:innerClass.x:{0}, innerEnum:{1}, val:{2}", innerClass.x, innerEnum.ToString(), _val);
     }
 }
 
