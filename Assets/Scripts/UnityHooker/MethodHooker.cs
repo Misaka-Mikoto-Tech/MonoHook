@@ -75,7 +75,7 @@ public unsafe class MethodHooker
         0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,         // jmp [rip]
         0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,   // $val
     };
-    private static int             s_addrOffset;
+    private static readonly int             s_addrOffset;
 
 
     private byte[]      _jmpBuff;
@@ -198,12 +198,7 @@ public unsafe class MethodHooker
         fixed (byte* p = &_jmpBuff[s_addrOffset])                  // 将跳转指向原函数跳过头的位置
         {
             if (IntPtr.Size == 4)
-            {
-                uint addr = (uint)_targetPtr.ToInt32();
-                addr += (uint)_proxyBuff.Length;
-                * ((uint*)p) = addr;
-            }
-                
+                * ((uint*)p) = (uint)_targetPtr.ToInt32() + (uint)_proxyBuff.Length;
             else
                 *((ulong*)p) = (ulong)_targetPtr.ToInt64() + (ulong)_proxyBuff.Length;
         }
