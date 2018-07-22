@@ -609,6 +609,9 @@ namespace DotNetDetour
         /// <returns></returns>
         public static uint SizeofMinNumByte(void* code, int size)
         {
+            if(IsAndroidARM())
+                return (uint)((size + 3) / 4) * 4; // TODO 此为 jit 模式下的长度， IL2CPP 需要独立计算
+
             UInt32 Length;
             byte* pOpcode;
             UInt32 Result = 0;
@@ -630,6 +633,17 @@ namespace DotNetDetour
             } while (Length>0);
 
             return Result;
+        }
+
+        public static bool IsAndroidARM()
+        {
+            return UnityEngine.SystemInfo.operatingSystem.Contains("Android")
+                && UnityEngine.SystemInfo.processorType.Contains("ARM");
+        }
+
+        public static bool IsiOS()
+        {
+            return UnityEngine.SystemInfo.operatingSystem.ToLower().Contains("ios");
         }
 
         static uint ldasm(void* code, ldasm_data ld, bool is64)

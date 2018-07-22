@@ -4,7 +4,7 @@
  Github: https://github.com/easy66/MonoHooker
  */
 
-#if UNITY_EDITOR
+using DotNetDetour;
 using System;
 using System.Reflection;
 
@@ -67,13 +67,38 @@ public unsafe class MethodHooker
     private static readonly byte[] s_jmpBuff;
     private static readonly byte[] s_jmpBuff_32 = new byte[] // 6 bytes
     {
-        0x68, 0x00, 0x00, 0x00, 0x00,               // push $val
-        0xC3                                        // ret
+        0x68, 0x00, 0x00, 0x00, 0x00,                       // push $val
+        0xC3                                                // ret
     };
     private static readonly byte[] s_jmpBuff_64 = new byte[] // 14 bytes
     {
-        0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,         // jmp [rip]
-        0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,   // $val
+        0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,                 // jmp [rip]
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // $val
+    };
+    private static readonly byte[] s_jmpBuff_arm32_arm = new byte[] // 8 bytes
+    {
+        0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
+        0x00, 0x00, 0x00, 0x00,                             // $val
+    };
+    private static readonly byte[] s_jmpBuff_arm32_thumb = new byte[] // 26 bytes
+    {
+        0x03, 0xB5, // PUSH {R0, R1, LR}
+        0x78, 0x46, // MOV R0, PC
+        0x0A, 0x30, // ADDS R0, R0, #10
+        0x00, 0x68, // LDR R0, [R0]
+        0x79, 0x46, // MOV R1, PC
+        0x08, 0x31, // ADDS R1, R1, #8
+        0x8E, 0x46, // MOV LR, R1
+        0x87, 0x46, // MOV PC, R0
+
+        0x00, 0x00, 0x00, 0x00, // DD 0x00000000
+        0x07, 0xBC, // POP {R2, R1, R0}
+        0x97, 0x46, // MOV, PC, R2
+};
+    private static readonly byte[] s_jmpBuff_arm64 = new byte[]
+    {
+        0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // $val
     };
     private static readonly int             s_addrOffset;
 
@@ -83,16 +108,37 @@ public unsafe class MethodHooker
 
     static MethodHooker()
     {
-        if (IntPtr.Size == 4)
+        if (DotNetDetour.LDasm.IsAndroidARM())
         {
-            s_jmpBuff       = s_jmpBuff_32;
-            s_addrOffset    = 1;
+            s_addrOffset = 4;
+            if (IntPtr.Size == 4)
+            {
+                //if(!IsThumbMode())
+                    s_jmpBuff = s_jmpBuff_arm32_arm;
+                //else
+                //{
+                //    s_jmpBuff = s_jmpBuff_arm32_thumb;
+                //    s_addrOffset = 16;
+                //}
+                
+            }
+            else
+                s_jmpBuff = s_jmpBuff_arm64;
         }
         else
         {
-            s_jmpBuff       = s_jmpBuff_64;
-            s_addrOffset    = 6;
+            if (IntPtr.Size == 4)
+            {
+                s_jmpBuff = s_jmpBuff_32;
+                s_addrOffset = 1;
+            }
+            else
+            {
+                s_jmpBuff = s_jmpBuff_64;
+                s_addrOffset = 6;
+            }
         }
+        
     }
 
     /// <summary>
@@ -117,6 +163,9 @@ public unsafe class MethodHooker
 
     public void Install()
     {
+        if(LDasm.IsiOS()) // iOS 不支持修改 code 所在区域 page
+            return;
+
         if (isHooked)
             return;
 
@@ -209,4 +258,3 @@ public unsafe class MethodHooker
 
 #endregion
 }
-#endif

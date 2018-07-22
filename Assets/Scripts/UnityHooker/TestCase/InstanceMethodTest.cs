@@ -48,7 +48,7 @@ public class B
 public class InstanceMethodTest
 {
 
-    public void Test()
+    public string Test()
     {
         Type typeA = typeof(A);
         Type typeB = typeof(B);
@@ -63,8 +63,10 @@ public class InstanceMethodTest
         // 调用原始A的方法测试
         A a = new A() { val = 5 };
         int ret = a.Func(2);
-        Debug.LogFormat("ret:{0}", ret);
+        string info = string.Format("ret:{0}", ret);
+        Debug.Log(info);
         Debug.Assert(ret == 10);
+        return info;
     }
     
 

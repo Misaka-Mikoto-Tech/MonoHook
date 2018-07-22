@@ -1,10 +1,12 @@
-﻿using UnityEngine;
+﻿using System.Text;
+using UnityEngine;
 using UnityEngine.UI;
 
 
 public class Test : MonoBehaviour
 {
     public Button btn;
+    public Text   txtInfo;
 
     private int _msgId;
 
@@ -14,6 +16,8 @@ public class Test : MonoBehaviour
     }
     private void Start()
     {
+        //return;
+
         Debug.Log("普通日志");
         Debug.LogError("普通错误");
 
@@ -34,6 +38,21 @@ public class Test : MonoBehaviour
 
     public void OnBtnClick()
     {
+        //StringBuilder sb = new StringBuilder();
+        //sb.AppendFormat("pointer size:{0}\r\n", System.IntPtr.Size);
+        //sb.AppendFormat("operation name:{0}\r\n", SystemInfo.operatingSystem);
+        //sb.AppendFormat("processorType:{0}\r\n", SystemInfo.processorType);
+        //sb.AppendLine();
+        //txtInfo.text = sb.ToString();
+
+        //// 测试实例方法替换
+        //InstanceMethodTest InstanceTest = new InstanceMethodTest();
+        //sb.Length = 0;
+        //string info = InstanceTest.Test();
+        //sb.AppendLine(info);
+        //txtInfo.text += sb.ToString();
+        
+        //return;
         PinnedLog.RemoveMsg(_msgId);
         PinnedLog.ClearAll();
     }

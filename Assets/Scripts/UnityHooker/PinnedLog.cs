@@ -10,10 +10,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using UnityEditor.Callbacks;
 using UnityEngine;
 
 #if UNITY_EDITOR
+using UnityEditor.Callbacks;
 
 /// <summary>
 /// 不会被清掉的日志
