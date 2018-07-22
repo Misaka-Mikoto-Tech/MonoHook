@@ -80,19 +80,27 @@ public unsafe class MethodHooker
         0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
         0x00, 0x00, 0x00, 0x00,                             // $val
     };
-    private static readonly byte[] s_jmpBuff_arm32_thumb = new byte[] // 24 bytes
+    private static readonly byte[] s_jmpBuff_arm32_thumb = new byte[] // 38 bytes
     {
-        0x03, 0xB5, // PUSH {R0, R1, LR}
+        0x00, 0xB5, // PUSH {LR}
+        0x10, 0xB4, // PUSH {R0}
+        0x03, 0xB4, // PUSH {R0, R1}
         0x78, 0x46, // MOV R0, PC
-        0x0A, 0x30, // ADDS R0, R0, #10
-        0x00, 0x68, // LDR R0, [R0]
+        0x16, 0x30, // ADD R0, #0x16
+        0x00, 0x68, // LDR R0, [R0, #0x00]
+        0x69, 0x46, // MOV R1, SP
+        0x08, 0x31, // ADD R1, #0x08
+        0x08, 0x60, // STR R0, [R1, #0x00]
         0x79, 0x46, // MOV R1, PC
-        0x08, 0x31, // ADDS R1, R1, #8
+        0x0E, 0x31, // ADD R1, #0x0E
         0x8E, 0x46, // MOV LR, R1
-        0x87, 0x46, // MOV PC, R0
+        0x01, 0xBC, // POP {R0}
+        0x02, 0xBC, // POP {R1}
+        0x00, 0xBD, // POP {PC}
+        0xC0, 0x46, // NOP
 
         0x00, 0x00, 0x00, 0x00, // DD 0x00000000
-        0x03, 0xBD, // POP {PC, R1, R0}
+        0x00, 0xBD, // POP {PC}
     };
     private static readonly byte[] s_jmpBuff_arm64 = new byte[]
     {
