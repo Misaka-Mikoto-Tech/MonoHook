@@ -99,7 +99,7 @@ public unsafe class MethodHooker
         0x00, 0xBD, // POP {PC}
         0xC0, 0x46, // NOP
 
-        0x00, 0x00, 0x00, 0x00, // DD 0x00000000
+        0x00, 0x00, 0x00, 0x00, // $val
         0x00, 0xBD, // POP {PC}
     };
     private static readonly byte[] s_jmpBuff_arm64 = new byte[]
@@ -115,19 +115,19 @@ public unsafe class MethodHooker
 
     static MethodHooker()
     {
-        if (DotNetDetour.LDasm.IsAndroidARM())
+        if (LDasm.IsAndroidARM())
         {
             s_addrOffset = 4;
             if (IntPtr.Size == 4)
             {
-                //if(!IsThumbMode())
+                if (!LDasm.IsIL2CPP())
                     s_jmpBuff = s_jmpBuff_arm32_arm;
-                //else
-                //{
-                //    s_jmpBuff = s_jmpBuff_arm32_thumb;
-                //    s_addrOffset = 16;
-                //}
-                
+                else
+                {
+                    s_jmpBuff = s_jmpBuff_arm32_thumb;
+                    s_addrOffset = 32;
+                }
+
             }
             else
                 s_jmpBuff = s_jmpBuff_arm64;

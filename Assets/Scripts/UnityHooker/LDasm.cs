@@ -609,8 +609,13 @@ namespace DotNetDetour
         /// <returns></returns>
         public static uint SizeofMinNumByte(void* code, int size)
         {
-            if(IsAndroidARM())
-                return (uint)((size + 3) / 4) * 4; // TODO 此为 jit 模式下的长度， IL2CPP 需要独立计算
+            if (IsAndroidARM())
+            {
+                if (IsIL2CPP())
+                    return CalcARMThumbMinLen(code, size);
+                else
+                    return (uint)((size + 3) / 4) * 4; // 此为 jit 模式下的长度
+            }
 
             UInt32 Length;
             byte* pOpcode;
@@ -644,6 +649,51 @@ namespace DotNetDetour
         public static bool IsiOS()
         {
             return UnityEngine.SystemInfo.operatingSystem.ToLower().Contains("ios");
+        }
+
+        public static bool IsIL2CPP()
+        {
+            bool isIL2CPP = false;
+            try
+            {
+                byte[] ilBody = typeof(LDasm).GetMethod("IsIL2CPP").GetMethodBody().GetILAsByteArray();
+                if (ilBody == null || ilBody.Length == 0)
+                    isIL2CPP = true;
+            }
+            catch
+            {
+                isIL2CPP = true;
+            }
+            return isIL2CPP;
+        }
+
+        /// <summary>
+        /// 计算 thumb 指令长度
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public static uint CalcARMThumbMinLen(void* code, int size)
+        {
+            uint len = 0;
+
+            ushort* ins = (ushort*)code;
+            while (true)
+            {
+                if (len >= size)
+                    return len;
+
+                if (((*ins >> 13) & 3) == 3)
+                {
+                    ins += 2;
+                    len += 4;
+                }
+                else
+                {
+                    ins++;
+                    len += 2;
+                }
+            }
         }
 
         static uint ldasm(void* code, ldasm_data ld, bool is64)
