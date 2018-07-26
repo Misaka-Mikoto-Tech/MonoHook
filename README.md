@@ -40,6 +40,8 @@
         }
     }
 ```
-
+## 存在问题
+ - 运行时目前只支持 android jit, il2cpp 需要增加一个 so 来调用 mprotect 方法，现在不准备搞。
+ 
 ## reference
 * https://github.com/bigbaldy1128/DotNetDetour
