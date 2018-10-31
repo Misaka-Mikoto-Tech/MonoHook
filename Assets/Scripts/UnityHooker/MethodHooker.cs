@@ -56,9 +56,9 @@ public unsafe class MethodHooker
 {
     public bool isHooked { get; private set; }
 
-    private MethodInfo  _targetMethod;       // 需要被hook的目标方法
-    private MethodInfo  _replacementMethod;  // 被hook后的替代方法
-    private MethodInfo  _proxyMethod;        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
+    private MethodBase  _targetMethod;       // 需要被hook的目标方法
+    private MethodBase  _replacementMethod;  // 被hook后的替代方法
+    private MethodBase  _proxyMethod;        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
 
     private IntPtr      _targetPtr;          // 目标方法被 jit 后的地址指针
     private IntPtr      _replacementPtr;
@@ -154,7 +154,7 @@ public unsafe class MethodHooker
     /// <param name="targetMethod">需要替换的目标方法</param>
     /// <param name="replacementMethod">准备好的替换方法</param>
     /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
-    public MethodHooker(MethodInfo targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod = null)
+    public MethodHooker(MethodBase targetMethod, MethodBase replacementMethod, MethodBase proxyMethod = null)
     {
         _targetMethod       = targetMethod;
         _replacementMethod  = replacementMethod;

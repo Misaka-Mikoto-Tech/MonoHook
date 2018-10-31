@@ -18,24 +18,26 @@ public class Test : MonoBehaviour
     }
     private void Start()
     {
-        return;
-
         Debug.Log("普通日志");
         Debug.LogError("普通错误");
 
         _msgId = PinnedLog.AddMsg("我是不会被清掉的日志");
 
-        // 测试实例方法替换
+        // 实例方法替换测试
         InstanceMethodTest InstanceTest = new InstanceMethodTest();
         InstanceTest.Test();
 
-        // 测试属性替换
+        // 属性替换测试
         PropertyHookTest propTest = new PropertyHookTest();
         propTest.Test();
 
         // 参数类型是私有类型的方法替换测试
         PrivateTypeArgMethodTest privateTypeArgMethodTest = new PrivateTypeArgMethodTest();
         privateTypeArgMethodTest.Test();
+
+        // 构造函数替换测试
+        CtorHookTest ctorHookTest = new CtorHookTest();
+        ctorHookTest.Test();
     }
 
     public void OnBtnClick()
@@ -54,7 +56,6 @@ public class Test : MonoBehaviour
         sb.AppendLine(info);
         txtInfo.text += sb.ToString();
 
-        return;
         PinnedLog.RemoveMsg(_msgId);
         PinnedLog.ClearAll();
     }

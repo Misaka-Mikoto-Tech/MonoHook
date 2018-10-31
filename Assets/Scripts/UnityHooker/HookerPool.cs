@@ -8,9 +8,9 @@ using UnityEngine;
 /// </summary>
 public static class HookerPool
 {
-    private static Dictionary<MethodInfo, MethodHooker> _hookers = new Dictionary<MethodInfo, MethodHooker>();
+    private static Dictionary<MethodBase, MethodHooker> _hookers = new Dictionary<MethodBase, MethodHooker>();
 
-    public static void AddHooker(MethodInfo method, MethodHooker hooker)
+    public static void AddHooker(MethodBase method, MethodHooker hooker)
     {
         MethodHooker preHooker;
         if (_hookers.TryGetValue(method, out preHooker))
@@ -22,7 +22,7 @@ public static class HookerPool
             _hookers.Add(method, hooker);
     }
 
-    public static void RemoveHooker(MethodInfo method)
+    public static void RemoveHooker(MethodBase method)
     {
         _hookers.Remove(method);
     }
