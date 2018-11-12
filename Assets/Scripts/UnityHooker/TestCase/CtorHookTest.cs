@@ -35,14 +35,14 @@ public class CtorHookTest
         Debug.Assert(hookTarget.x == 2);
     }
 
-    public static void CtorTargetReplace(CtorHookTarget target, int x)
+    public void CtorTargetReplace(int x)
     {
         x += 1;
-        CtorTargetProxy(target, x);
+        CtorTargetProxy(x);
     }
 
-    public static void CtorTargetProxy(CtorHookTarget target, int x)
+    public void CtorTargetProxy(int x)
     {
-
+        Debug.Log("CtorTargetProxy");
     }
 }

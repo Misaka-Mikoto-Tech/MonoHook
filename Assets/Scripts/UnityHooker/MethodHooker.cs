@@ -6,7 +6,10 @@
 
 using DotNetDetour;
 using System;
+using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using Unity.Collections.LowLevel.Unsafe;
 
 
 /*
@@ -120,13 +123,14 @@ public unsafe class MethodHooker
             s_addrOffset = 4;
             if (IntPtr.Size == 4)
             {
-                if (!LDasm.IsIL2CPP())
-                    s_jmpBuff = s_jmpBuff_arm32_arm;
-                else
-                {
-                    s_jmpBuff = s_jmpBuff_arm32_thumb;
-                    s_addrOffset = 32;
-                }
+                s_jmpBuff = s_jmpBuff_arm32_arm;
+                //if (!LDasm.IsIL2CPP())
+                //    s_jmpBuff = s_jmpBuff_arm32_arm;
+                //else
+                //{
+                //    s_jmpBuff = s_jmpBuff_arm32_thumb;
+                //    s_addrOffset = 32;
+                //}
 
             }
             else
@@ -160,10 +164,10 @@ public unsafe class MethodHooker
         _replacementMethod  = replacementMethod;
         _proxyMethod        = proxyMethod;
 
-        _targetPtr      = _targetMethod.MethodHandle.GetFunctionPointer();
-        _replacementPtr = _replacementMethod.MethodHandle.GetFunctionPointer();
+        _targetPtr      = GetFunctionAddr(_targetMethod);
+        _replacementPtr = GetFunctionAddr(_replacementMethod);
         if(proxyMethod != null)
-            _proxyPtr       = _proxyMethod.MethodHandle.GetFunctionPointer();
+            _proxyPtr       = GetFunctionAddr(_proxyMethod);
 
         _jmpBuff = new byte[s_jmpBuff.Length];
     }
@@ -210,6 +214,7 @@ public unsafe class MethodHooker
 
         uint requireSize = DotNetDetour.LDasm.SizeofMinNumByte(pTarget, s_jmpBuff.Length);
         _proxyBuff = new byte[requireSize];
+        EnableAddrModifiable(_targetPtr, requireSize);
     }
 
     /// <summary>
@@ -235,8 +240,13 @@ public unsafe class MethodHooker
         }
 
         byte* pTarget = (byte*)_targetPtr.ToPointer();
-        for (int i = 0; i < _jmpBuff.Length; i++)
-            *pTarget++ = _jmpBuff[i];
+        
+        if(pTarget != null)
+        {
+            for (int i = 0, imax = _jmpBuff.Length; i < imax; i++)
+                *pTarget++ = _jmpBuff[i];
+        }
+        
     }
 
     /// <summary>
@@ -247,7 +257,8 @@ public unsafe class MethodHooker
         if (_proxyPtr == IntPtr.Zero)
             return;
 
-        byte* pProxy = (byte*)_proxyPtr.ToPointer();
+        EnableAddrModifiable(_proxyPtr, (uint)_proxyBuff.Length);
+        byte * pProxy = (byte*)_proxyPtr.ToPointer();
         for (int i = 0; i < _proxyBuff.Length; i++)     // 先填充头
             *pProxy++ = _proxyBuff[i];
 
@@ -261,6 +272,61 @@ public unsafe class MethodHooker
 
         for (int i = 0; i < _jmpBuff.Length; i++)       // 再填充跳转
             *pProxy++ = _jmpBuff[i];
+    }
+
+    private void EnableAddrModifiable(IntPtr ptr, uint size)
+    {
+        if (!LDasm.IsIL2CPP())
+            return;
+
+        uint oldProtect;
+        bool ret = IL2CPPHelper.VirtualProtect(ptr, size, IL2CPPHelper.Protection.PAGE_EXECUTE_READWRITE, out oldProtect);
+        Debug.Assert(ret);
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)] // 好像在 IL2CPP 里无效
+    private struct __ForCopy
+    {
+        public long         __dummy;
+        public MethodBase   method;
+    }
+    /// <summary>
+    /// 获取方法指令地址
+    /// </summary>
+    /// <param name="method"></param>
+    /// <returns></returns>
+    private IntPtr GetFunctionAddr(MethodBase method)
+    {
+        if (!LDasm.IsIL2CPP())
+            return method.MethodHandle.GetFunctionPointer();
+        else
+        {
+            __ForCopy __forCopy = new __ForCopy() { method = method };
+
+            long* ptr = &__forCopy.__dummy;
+            ptr++; // addr of _forCopy.method
+
+            IntPtr methodAddr = IntPtr.Zero;
+            if(sizeof(IntPtr) == 8)
+            {
+                long methodDataAddr = *(long*)ptr;
+                byte* ptrData = (byte *)methodDataAddr + sizeof(IntPtr) * 2; // offset of Il2CppReflectionMethod::const MethodInfo *method;
+
+                long methodPtr = 0;
+                methodPtr = *(long*)ptrData;
+                methodAddr = new IntPtr(*(long*)methodPtr); // MethodInfo::Il2CppMethodPointer methodPointer;
+            }
+            else
+            {
+                int methodDataAddr = *(int*)ptr;
+                byte* ptrData = (byte *)methodDataAddr + sizeof(IntPtr) * 2; // offset of Il2CppReflectionMethod::const MethodInfo *method;
+
+                int methodPtr = 0;
+                methodPtr = *(int*)ptrData;
+                methodAddr = new IntPtr(*(int*)methodPtr);
+            }
+            return methodAddr;
+        }
     }
 
 #endregion

@@ -22,20 +22,22 @@ public class A
 
 public class B
 {
-    public static int FuncReplace(A a, int x) // 目前没找到合法传递非本类 this 的方法，只好用 static 凑合了
+    public int FuncReplace(int x)
     {
+        object obj = this;
+        A a = obj as A;
         Debug.Log("call of B.Func");
         x += 1;
         a.val = 7;
 
         // 可以调用原方法或者不调用
         if (x < 100)
-            return FuncProxy(a, x);
+            return FuncProxy(x);
         else
             return x + 1;
     }
 
-    public static int FuncProxy(A a, int x)
+    public int FuncProxy(int x)
     {
         Debug.Log("随便乱写");
         return x;

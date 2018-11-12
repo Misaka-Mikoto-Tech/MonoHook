@@ -28,16 +28,17 @@ public class PropClassA
 
 public class PropClassB
 {
-    public static void PropXSetReplace(PropClassA a, int val)
+    public void PropXSetReplace(int val)
     {
         Debug.LogFormat("PropXSetReplace with value:{0}", val);
 
         val += 1;
-        PropXSetProxy(a, val);
+        PropXSetProxy(val);
     }
 
-    public static void PropXSetProxy(PropClassA a, int val)
+    public void PropXSetProxy(int val)
     {
+        Debug.Log("PropXSetProxy");
     }
 }
 
@@ -53,6 +54,7 @@ public class PropertyHookTest
 
         MethodInfo miBReplace = typeB.GetMethod("PropXSetReplace");
         MethodInfo miBProxy = typeB.GetMethod("PropXSetProxy");
+        Debug.Log($"PropertyHook of miBProxy is not null {miBProxy != null}");
 
         MethodHooker hooker = new MethodHooker(miASet, miBReplace, miBProxy);
         hooker.Install();

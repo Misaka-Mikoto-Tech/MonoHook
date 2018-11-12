@@ -42,14 +42,14 @@ public class PrivateTestB
     /// <param name="a"></param>
     /// <param name="innerClass"></param>
     /// <param name="innerEnum"></param>
-    public static void FuncReplace(PrivateTestA a, object innerClass, short innerEnum)
+    public void FuncReplace(object innerClass, short innerEnum)
     {
         Debug.Log("PrivateTestB.FuncReplace called");
         innerEnum += 1;
-        Proxy(a, innerClass, innerEnum);
+        Proxy(innerClass, innerEnum);
     }
 
-    public static void Proxy(PrivateTestA a, object innerClass, short innerEnum)
+    public  void Proxy(object innerClass, short innerEnum)
     {
         Debug.Log("something");
     }

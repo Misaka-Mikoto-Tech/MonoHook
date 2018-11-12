@@ -12,7 +12,7 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: SNDA
+  companyName: Misaka
   productName: MonoHooker
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
@@ -52,7 +52,6 @@ PlayerSettings:
   m_StackTraceTypes: 010000000100000001000000010000000100000001000000
   iosShowActivityIndicatorOnLoading: -1
   androidShowActivityIndicatorOnLoading: -1
-  tizenShowActivityIndicatorOnLoading: -1
   iosAppInBackgroundBehavior: 0
   displayResolutionDialog: 1
   iosAllowHTTPDownload: 1
@@ -111,6 +110,8 @@ PlayerSettings:
   videoMemoryForVertexBuffers: 0
   psp2PowerMode: 0
   psp2AcquireBGM: 1
+  vulkanEnableSetSRGBWrite: 0
+  vulkanUseSWCommandBuffers: 0
   m_SupportedAspectRatios:
     4:3: 1
     5:4: 1
@@ -124,6 +125,7 @@ PlayerSettings:
   m_HolographicPauseOnTrackingLoss: 1
   xboxOneDisableKinectGpuReservation: 0
   xboxOneEnable7thCore: 0
+  isWsaHolographicRemotingEnabled: 0
   vrSettings:
     cardboard:
       depthFormat: 0
@@ -138,10 +140,10 @@ PlayerSettings:
     hololens:
       depthFormat: 1
       depthBufferSharingEnabled: 0
-    enable360StereoCapture: 0
     oculus:
       sharedDepthBuffer: 0
       dashSupport: 0
+    enable360StereoCapture: 0
   protectGraphicsMemory: 0
   useHDRDisplay: 0
   m_ColorGamuts: 00000000
@@ -151,7 +153,7 @@ PlayerSettings:
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
     Android: com.SNDA.MonoHooker
-    Standalone: unity.DefaultCompany.MonoHooker
+    Standalone: unity.Misaka.MonoHooker
     Tizen: 
     iOS: com.Company.ProductName
     tvOS: 
@@ -239,6 +241,7 @@ PlayerSettings:
   appleEnableAutomaticSigning: 0
   iOSRequireARKit: 0
   appleEnableProMotion: 0
+  vulkanEditorSupport: 0
   clonedFromGUID: 00000000000000000000000000000000
   templatePackageId: 
   templateDefaultScene: 
@@ -247,6 +250,7 @@ PlayerSettings:
   androidSplashScreen: {fileID: 0}
   AndroidKeystoreName: 
   AndroidKeyaliasName: 
+  AndroidBuildApkPerCpuArchitecture: 0
   AndroidTVCompatibility: 1
   AndroidIsGame: 1
   AndroidEnableTango: 0
@@ -295,6 +299,7 @@ PlayerSettings:
     m_EncodingQuality: 1
   - m_BuildTarget: PS4
     m_EncodingQuality: 1
+  m_BuildTargetGroupLightmapSettings: []
   playModeTestRunnerEnabled: 0
   runPlayModeTestAsEditModeTest: 0
   actionOnDotNetUnhandledException: 1
@@ -416,7 +421,11 @@ PlayerSettings:
   switchAllowsVideoCapturing: 1
   switchAllowsRuntimeAddOnContentInstall: 0
   switchDataLossConfirmation: 0
+  switchUserAccountLockEnabled: 0
   switchSupportedNpadStyles: 3
+  switchNativeFsCacheSize: 32
+  switchIsHoldTypeHorizontal: 0
+  switchSupportedNpadCount: 8
   switchSocketConfigEnabled: 0
   switchTcpInitialSendBufferSize: 32
   switchTcpInitialReceiveBufferSize: 64
@@ -575,13 +584,14 @@ PlayerSettings:
   platformArchitecture: {}
   scriptingBackend:
     Android: 1
+    Standalone: 1
   il2cppCompilerConfiguration: {}
   incrementalIl2cppBuild: {}
   allowUnsafeCode: 1
   additionalIl2CppArgs: 
   scriptingRuntimeVersion: 1
   apiCompatibilityLevelPerPlatform:
-    Standalone: 1
+    Standalone: 3
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
   metroPackageName: Template_3D
@@ -594,7 +604,6 @@ PlayerSettings:
   metroApplicationDescription: Template_3D
   wsaImages: {}
   metroTileShortName: 
-  metroCommandLineArgsFile: 
   metroTileShowName: 0
   metroMediumTileShowName: 0
   metroLargeTileShowName: 0
@@ -610,14 +619,6 @@ PlayerSettings:
   metroFTAFileTypes: []
   metroProtocolName: 
   metroCompilationOverrides: 1
-  tizenProductDescription: 
-  tizenProductURL: 
-  tizenSigningProfileName: 
-  tizenGPSPermissions: 0
-  tizenMicrophonePermissions: 0
-  tizenDeploymentTarget: 
-  tizenDeploymentTargetType: -1
-  tizenMinOSVersion: 1
   n3dsUseExtSaveData: 0
   n3dsCompressStaticMem: 1
   n3dsExtSaveDataNumber: 0x12345
@@ -638,6 +639,7 @@ PlayerSettings:
   XboxOneGameOsOverridePath: 
   XboxOnePackagingOverridePath: 
   XboxOneAppManifestOverridePath: 
+  XboxOneVersion: 1.0.0.0
   XboxOnePackageEncryption: 0
   XboxOnePackageUpdateGranularity: 2
   XboxOneDescription: 
@@ -659,7 +661,7 @@ PlayerSettings:
       daydreamIconBackground: {fileID: 0}
   cloudServicesEnabled: {}
   facebookSdkVersion: 7.9.4
-  apiCompatibilityLevel: 2
+  apiCompatibilityLevel: 3
   cloudProjectId: 
   projectName: 
   organizationId: 

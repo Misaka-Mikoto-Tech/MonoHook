@@ -2,9 +2,11 @@
 本代码的功能是运行时修改C#函数
 ## 特点：
 * 运行时直接修改内存中的 jit 代码，不会修改 UnityEditor.dll 等文件，避免让别人修改文件的尴尬。
+* 不影响调试。
 * 同时支持 .net 2.x 与 .net 4.x。
 * 目前测试支持 unity4.7.2, unity5.x, unity 2017 与 unity 2018。
 * 使用很方便，在C#内定义签名与原始方法相同的两个方法然后注册一下就能用了。
+* 目前已支持 Android Mono, Windows Mono/IL2CPP
 
 ## 预览
 ![image](Preview/Preview.gif)
@@ -41,7 +43,7 @@
     }
 ```
 ## 存在问题
- - 运行时目前只支持 android jit, il2cpp 需要增加一个 so 来调用 mprotect 方法，现在不准备搞。
+ - 运行时目前只支持 android jit 以及 windows IL2CPP, android il2cpp 需要增加一个 so 来调用 mprotect 方法，现在不准备搞。
  
 ## reference
 * https://github.com/bigbaldy1128/DotNetDetour
