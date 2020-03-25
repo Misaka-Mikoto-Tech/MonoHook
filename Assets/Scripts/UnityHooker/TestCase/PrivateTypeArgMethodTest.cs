@@ -66,7 +66,7 @@ public class PrivateTypeArgMethodTest
         MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
         MethodInfo miBProxy = typeB.GetMethod("Proxy");
 
-        MethodHooker hooker = new MethodHooker(miAPrivateFunc, miBReplace, miBProxy);
+        MethodHook hooker = new MethodHook(miAPrivateFunc, miBReplace, miBProxy);
         hooker.Install();
 
         PrivateTestA privateTestA = new PrivateTestA();

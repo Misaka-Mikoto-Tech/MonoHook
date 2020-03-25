@@ -28,7 +28,7 @@ public class CtorHookTest
         MethodBase mbReplace = typeB.GetMethod("CtorTargetReplace");
         MethodBase mbProxy = typeB.GetMethod("CtorTargetProxy");
 
-        MethodHooker hookder = new MethodHooker(mbCtorA, mbReplace, mbProxy);
+        MethodHook hookder = new MethodHook(mbCtorA, mbReplace, mbProxy);
         hookder.Install();
 
         CtorHookTarget hookTarget = new CtorHookTarget(1);

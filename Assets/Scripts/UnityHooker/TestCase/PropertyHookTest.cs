@@ -56,7 +56,7 @@ public class PropertyHookTest
         MethodInfo miBProxy = typeB.GetMethod("PropXSetProxy");
         Debug.Log($"PropertyHook of miBProxy is not null {miBProxy != null}");
 
-        MethodHooker hooker = new MethodHooker(miASet, miBReplace, miBProxy);
+        MethodHook hooker = new MethodHook(miASet, miBReplace, miBProxy);
         hooker.Install();
 
         PropClassA a = new PropClassA(5);

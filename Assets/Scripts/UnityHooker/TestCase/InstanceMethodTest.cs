@@ -59,7 +59,7 @@ public class InstanceMethodTest
         MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
         MethodInfo miBProxy = typeB.GetMethod("FuncProxy");
 
-        MethodHooker hooker = new MethodHooker(miAFunc, miBReplace, miBProxy);
+        MethodHook hooker = new MethodHook(miAFunc, miBReplace, miBProxy);
         hooker.Install();
 
         // 调用原始A的方法测试

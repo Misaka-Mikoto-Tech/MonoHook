@@ -1,7 +1,7 @@
 ﻿/*
  Desc: 一个可以运行时 Hook Mono 方法的工具，让你可以无需修改 UnityEditor.dll 等文件就可以重写其函数功能
  Author: Misaka Mikoto
- Github: https://github.com/easy66/MonoHooker
+ Github: https://github.com/Misaka-Mikoto-Tech/MonoHook
  */
 
 using DotNetDetour;
@@ -55,7 +55,7 @@ using Unity.Collections.LowLevel.Unsafe;
 /// <summary>
 /// Hook 类，用来 Hook 某个 C# 方法
 /// </summary>
-public unsafe class MethodHooker
+public unsafe class MethodHook
 {
     public bool isHooked { get; private set; }
 
@@ -116,7 +116,7 @@ public unsafe class MethodHooker
     private byte[]      _jmpBuff;
     private byte[]      _proxyBuff;
 
-    static MethodHooker()
+    static MethodHook()
     {
         if (LDasm.IsAndroidARM())
         {
@@ -153,12 +153,12 @@ public unsafe class MethodHooker
     }
 
     /// <summary>
-    /// 创建一个 Hooker
+    /// 创建一个 Hook
     /// </summary>
     /// <param name="targetMethod">需要替换的目标方法</param>
     /// <param name="replacementMethod">准备好的替换方法</param>
     /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
-    public MethodHooker(MethodBase targetMethod, MethodBase replacementMethod, MethodBase proxyMethod = null)
+    public MethodHook(MethodBase targetMethod, MethodBase replacementMethod, MethodBase proxyMethod = null)
     {
         _targetMethod       = targetMethod;
         _replacementMethod  = replacementMethod;
@@ -180,7 +180,7 @@ public unsafe class MethodHooker
         if (isHooked)
             return;
 
-        HookerPool.AddHooker(_targetMethod, this);
+        HookPool.AddHooker(_targetMethod, this);
 
         InitProxyBuff();
         BackupHeader();
@@ -200,7 +200,7 @@ public unsafe class MethodHooker
             *pTarget++ = _proxyBuff[i];
 
         isHooked = false;
-        HookerPool.RemoveHooker(_targetMethod);
+        HookPool.RemoveHooker(_targetMethod);
     }
 
 #region private

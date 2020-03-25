@@ -4,15 +4,15 @@ using System.Reflection;
 using UnityEngine;
 
 /// <summary>
-/// Hooker 池，防止重复 Hook
+/// Hook 池，防止重复 Hook
 /// </summary>
-public static class HookerPool
+public static class HookPool
 {
-    private static Dictionary<MethodBase, MethodHooker> _hookers = new Dictionary<MethodBase, MethodHooker>();
+    private static Dictionary<MethodBase, MethodHook> _hookers = new Dictionary<MethodBase, MethodHook>();
 
-    public static void AddHooker(MethodBase method, MethodHooker hooker)
+    public static void AddHooker(MethodBase method, MethodHook hooker)
     {
-        MethodHooker preHooker;
+        MethodHook preHooker;
         if (_hookers.TryGetValue(method, out preHooker))
         {
             preHooker.Uninstall();

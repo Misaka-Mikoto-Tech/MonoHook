@@ -18,29 +18,33 @@
 
 ## 使用方法
 ```CSharp
-    [DidReloadScripts] // 最好脚本加载完毕就 hook
-    static void InstallHook()
-    {
-        if(_hooker == null)
+   [InitializeOnLoad] // 最好Editor启动及重新编译完毕就执行
+   public static class HookTest
+   {
+        static HookTest()
         {
-            Type type = Type.GetType("UnityEditor.LogEntries,UnityEditor.dll");
-            // 找到需要 Hook 的方法
-            MethodInfo miTarget = type.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
+            if(_hook == null)
+            {
+                Type type = Type.GetType("UnityEditor.LogEntries,UnityEditor.dll");
+                // 找到需要 Hook 的方法
+                MethodInfo miTarget = type.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
 
-            type = typeof(PinnedLog);
+                type = typeof(PinnedLog);
 
-            // 找到被替换成的新方法
-            MethodInfo miReplacement = type.GetMethod("NewClearLog", BindingFlags.Static | BindingFlags.NonPublic);
+                // 找到被替换成的新方法
+                MethodInfo miReplacement = type.GetMethod("NewClearLog", BindingFlags.Static | BindingFlags.NonPublic);
 
-            // 这个方法是用来调用原始方法的
-            MethodInfo miProxy = type.GetMethod("ProxyClearLog", BindingFlags.Static | BindingFlags.NonPublic);
+                // 这个方法是用来调用原始方法的
+                MethodInfo miProxy = type.GetMethod("ProxyClearLog", BindingFlags.Static | BindingFlags.NonPublic);
 
-            // 创建一个 Hooker 并 Install 就OK啦, 之后无论哪个代码再调用原始方法都会重定向到
-            //  我们写的方法ヾ(ﾟ∀ﾟゞ)
-            _hooker = new MethodHooker(miTarget, miReplacement, miProxy);
-            _hooker.Install();
+                // 创建一个 Hook 并 Install 就OK啦, 之后无论哪个代码再调用原始方法都会重定向到
+                //  我们写的方法ヾ(ﾟ∀ﾟゞ)
+                _hook = new MethodHook(miTarget, miReplacement, miProxy);
+                _hook.Install();
+            }
         }
-    }
+   }
+    
 ```
 ## 存在问题
  - 运行时目前只支持 android jit 以及 windows IL2CPP, android il2cpp 需要增加一个 so 来调用 mprotect 方法，现在不准备搞。

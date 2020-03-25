@@ -38,6 +38,10 @@ public class Test : MonoBehaviour
         // 构造函数替换测试
         CtorHookTest ctorHookTest = new CtorHookTest();
         ctorHookTest.Test();
+
+        // 测试GameObject.SetActive
+        btn.gameObject.SetActive(false);
+        btn.gameObject.SetActive(true);
     }
 
     public void OnBtnClick()
