@@ -62,7 +62,7 @@ public static class SceneViewMoveFunc_HookTest
     private static MethodHook _hook;
 
     /// <summary>
-    /// 自定义SceneView移动函数
+    /// 自定义SceneView加速移动函数
     /// </summary>
     /// <returns></returns>
     private static float CustomMoveFunction(float deltaTime)
@@ -96,8 +96,8 @@ public static class SceneViewMoveFunc_HookTest
             MethodInfo miTarget = _sceneViewMotionType.GetMethod("GetMovementDirection", BindingFlags.Static | BindingFlags.NonPublic);
 
             Type type = typeof(SceneViewMoveFunc_HookTest);
-            MethodInfo miReplacement = type.GetMethod("SceneViewMotion", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("SceneViewMotionProxy", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miReplacement = type.GetMethod("GetMovementDirectionNew", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miProxy = type.GetMethod("GetMovementDirectionProxy", BindingFlags.Static | BindingFlags.NonPublic);
 
             _hook = new MethodHook(miTarget, miReplacement, miProxy);
             _hook.Install();
@@ -106,14 +106,18 @@ public static class SceneViewMoveFunc_HookTest
         }
     }
 
-    private static Vector3 SceneViewMotion()
+    /// <summary>
+    /// 重写原有的完整的移动方法(此方法也可以被完全修改)
+    /// </summary>
+    /// <returns></returns>
+    private static Vector3 GetMovementDirectionNew()
     {
         //return SceneViewMotionProxy();
 
         s_Moving = s_Motion.sqrMagnitude > 0f;
         var _CurrentSceneView = s_CurrentSceneView; // 避免多次反射调用
         float speed = _CurrentSceneView.cameraSettings.speed;
-        float deltaTime = s_deltaTime;
+        float deltaTime = s_deltaTime; // s_deltaTime 不可被多次访问
         if (Event.current.shift)
         {
             speed *= 5f;
@@ -122,7 +126,7 @@ public static class SceneViewMoveFunc_HookTest
         {
             if (_CurrentSceneView.cameraSettings.accelerationEnabled)
             {
-                s_FlySpeedTarget = CustomMoveFunction(deltaTime); // 自定义移动函数
+                s_FlySpeedTarget = CustomMoveFunction(deltaTime); // 自定义加速移动函数
             }
             else
             {
@@ -136,16 +140,16 @@ public static class SceneViewMoveFunc_HookTest
         if (_CurrentSceneView.cameraSettings.easingEnabled)
         {
             s_FlySpeed.speed = 1f / _CurrentSceneView.cameraSettings.easingDuration;
-            s_FlySpeed.target = (Vector3)((s_Motion.normalized * s_FlySpeedTarget) * speed);
+            s_FlySpeed.target = (s_Motion.normalized * s_FlySpeedTarget) * speed;
         }
         else
         {
-            s_FlySpeed.value = (Vector3)((s_Motion.normalized * s_FlySpeedTarget) * speed);
+            s_FlySpeed.value = (s_Motion.normalized * s_FlySpeedTarget) * speed;
         }
-        return (Vector3)(s_FlySpeed.value * deltaTime);
+        return s_FlySpeed.value * deltaTime;
     }
 
-    private static Vector3 SceneViewMotionProxy()
+    private static Vector3 GetMovementDirectionProxy()
     {
         // dummy
         return Vector3.zero;
