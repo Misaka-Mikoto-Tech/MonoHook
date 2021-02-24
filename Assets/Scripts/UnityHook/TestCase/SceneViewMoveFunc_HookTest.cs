@@ -41,7 +41,7 @@ public static class SceneViewMoveFunc_HookTest
 
     private static SceneView s_CurrentSceneView
     {
-        // 此变量与当前context有关，因此必须每次都重新获取
+        // 此变量与当前context有关，因此每次使用都必须即时获取
         get => _fi_s_CurrentSceneView.GetValue(null) as SceneView;
     }
 
@@ -65,7 +65,7 @@ public static class SceneViewMoveFunc_HookTest
     /// 自定义SceneView加速移动函数
     /// </summary>
     /// <returns></returns>
-    private static float CustomMoveFunction(float deltaTime)
+    private static float CustomAccMoveFunction(float deltaTime)
     {
         float FlySpeedTarget = s_FlySpeedTarget;
         float speed = (FlySpeedTarget < Mathf.Epsilon) ? k_FlySpeed : (FlySpeedTarget * Mathf.Pow(k_FlySpeedAcceleration, deltaTime));
@@ -107,17 +107,17 @@ public static class SceneViewMoveFunc_HookTest
     }
 
     /// <summary>
-    /// 重写原有的完整的移动方法(此方法也可以被完全修改)
+    /// 重写原有的完整的移动逻辑(此方法也可以被完全修改)
     /// </summary>
     /// <returns></returns>
     private static Vector3 GetMovementDirectionNew()
     {
-        //return SceneViewMotionProxy();
+        //return GetMovementDirectionProxy();
 
         s_Moving = s_Motion.sqrMagnitude > 0f;
-        var _CurrentSceneView = s_CurrentSceneView; // 避免多次反射调用
+        var _CurrentSceneView = s_CurrentSceneView; // 缓存变量以避免多次反射调用
         float speed = _CurrentSceneView.cameraSettings.speed;
-        float deltaTime = s_deltaTime; // s_deltaTime 不可被多次访问
+        float deltaTime = s_deltaTime;              // s_deltaTime 不可被多次访问
         if (Event.current.shift)
         {
             speed *= 5f;
@@ -126,7 +126,7 @@ public static class SceneViewMoveFunc_HookTest
         {
             if (_CurrentSceneView.cameraSettings.accelerationEnabled)
             {
-                s_FlySpeedTarget = CustomMoveFunction(deltaTime); // 自定义加速移动函数
+                s_FlySpeedTarget = CustomAccMoveFunction(deltaTime); // 自定义加速移动函数
             }
             else
             {
