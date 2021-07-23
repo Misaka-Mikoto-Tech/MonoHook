@@ -5,7 +5,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEditor;
 
-[InitializeOnLoad]
+//[InitializeOnLoad]
 public class GameObject_CreatePrimitive_HookTest
 {
     private static MethodHook _hook;
@@ -29,7 +29,7 @@ public class GameObject_CreatePrimitive_HookTest
 
     private static void CreateAndPlacePrimitive(PrimitiveType type, GameObject parent)
     {
-        Debug.LogFormat($"将要通过右键菜单创建类型内置类型 {type} ");
+        Debug.LogFormat($"灏嗚閫氳繃鍙抽敭鑿滃崟鍒涘缓绫诲瀷鍐呯疆绫诲瀷 {type} ");
 
         CreateAndPlacePrimitiveProxy(type, parent);
     }
