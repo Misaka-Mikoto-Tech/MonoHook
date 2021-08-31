@@ -189,7 +189,10 @@ public unsafe class MethodHook
         if (isHooked)
             return;
 
-        EditorApplication.update += OnEditorUpdate;
+        if (s_fi_GUISkin_current.GetValue(null) != null)
+            DoInstall();
+        else
+            EditorApplication.update += OnEditorUpdate;
     }
     public void Uninstall()
     {
