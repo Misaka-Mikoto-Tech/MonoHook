@@ -10,6 +10,8 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
+using UnityEditor;
+using UnityEngine;
 
 
 /*
@@ -116,6 +118,14 @@ public unsafe class MethodHook
     private byte[]      _jmpBuff;
     private byte[]      _proxyBuff;
 
+    /// <summary>
+    /// call `MethodInfo.MethodHandle.GetFunctionPointer()` 
+    /// will visit static class `UnityEditor.IMGUI.Controls.TreeViewGUI.Styles` and invoke its static constructor,
+    /// and init static filed `foldout`, but `GUISKin.current` is null now,
+    /// so we should wait until `GUISKin.current` has a valid value
+    /// </summary>
+    private static FieldInfo s_fi_GUISkin_current;
+
     static MethodHook()
     {
         if (LDasm.IsAndroidARM())
@@ -149,7 +159,8 @@ public unsafe class MethodHook
                 s_addrOffset = 6;
             }
         }
-        
+
+        s_fi_GUISkin_current = typeof(GUISkin).GetField("current", BindingFlags.Static | BindingFlags.NonPublic);
     }
 
     /// <summary>
@@ -164,32 +175,22 @@ public unsafe class MethodHook
         _replacementMethod  = replacementMethod;
         _proxyMethod        = proxyMethod;
 
-        _targetPtr      = GetFunctionAddr(_targetMethod);
-        _replacementPtr = GetFunctionAddr(_replacementMethod);
-        if(proxyMethod != null)
-            _proxyPtr       = GetFunctionAddr(_proxyMethod);
-
         _jmpBuff = new byte[s_jmpBuff.Length];
     }
 
     public void Install()
     {
-        if(LDasm.IsiOS()) // iOS 不支持修改 code 所在区域 page
+        if (_targetMethod == null || _replacementMethod == null)
+            throw new Exception("MethodHook:_targetMethod and _replacementMethod can not be null");
+
+        if (LDasm.IsiOS()) // iOS 不支持修改 code 所在区域 page
             return;
 
         if (isHooked)
             return;
 
-        HookPool.AddHooker(_targetMethod, this);
-
-        InitProxyBuff();
-        BackupHeader();
-        PatchTargetMethod();
-        PatchProxyMethod();
-
-        isHooked = true;
+        EditorApplication.update += OnEditorUpdate;
     }
-
     public void Uninstall()
     {
         if (!isHooked)
@@ -203,7 +204,31 @@ public unsafe class MethodHook
         HookPool.RemoveHooker(_targetMethod);
     }
 
-#region private
+    #region private
+    private void DoInstall()
+    {
+        HookPool.AddHooker(_targetMethod, this);
+
+        GetFunctionAddr();
+        InitProxyBuff();
+        BackupHeader();
+        PatchTargetMethod();
+        PatchProxyMethod();
+
+        isHooked = true;
+    }
+
+    /// <summary>
+    /// 获取对应函数jit后的native code的地址
+    /// </summary>
+    private void GetFunctionAddr()
+    {
+        _targetPtr = GetFunctionAddr(_targetMethod);
+        _replacementPtr = GetFunctionAddr(_replacementMethod);
+        if (_proxyMethod != null)
+            _proxyPtr = GetFunctionAddr(_proxyMethod);
+    }
+
     /// <summary>
     ///  根据具体指令填充 ProxyBuff
     /// </summary>
@@ -281,7 +306,7 @@ public unsafe class MethodHook
 
         uint oldProtect;
         bool ret = IL2CPPHelper.VirtualProtect(ptr, size, IL2CPPHelper.Protection.PAGE_EXECUTE_READWRITE, out oldProtect);
-        Debug.Assert(ret);
+        UnityEngine.Debug.Assert(ret);
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)] // 好像在 IL2CPP 里无效
@@ -326,6 +351,15 @@ public unsafe class MethodHook
                 methodAddr = new IntPtr(*(int*)methodPtr);
             }
             return methodAddr;
+        }
+    }
+
+    private void OnEditorUpdate()
+    {
+        if(s_fi_GUISkin_current.GetValue(null) != null)
+        {
+            DoInstall();
+            EditorApplication.update -= OnEditorUpdate;
         }
     }
 

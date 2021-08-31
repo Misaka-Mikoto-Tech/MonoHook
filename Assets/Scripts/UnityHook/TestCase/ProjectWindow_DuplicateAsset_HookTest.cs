@@ -1,4 +1,4 @@
-using System;
+锘縰sing System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -7,7 +7,7 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// 监控资源复制操作
+/// 鐩戞帶璧勬簮澶嶅埗鎿嶄綔
 /// </summary>
 //[InitializeOnLoad]
 public class ProjectWindow_DuplicateAsset_HookTest
@@ -53,7 +53,7 @@ public class ProjectWindow_DuplicateAsset_HookTest
             pathAfter[i] = AssetDatabase.GetAssetPath(selectedAfter[i]);
 
         StringBuilder sb = new StringBuilder(1024);
-        sb.AppendLine("执行了复制文件：");
+        sb.AppendLine("鎵ц浜嗗鍒舵枃浠讹細");
         for(int i = 0, imax = Math.Min(pathPre.Length, pathAfter.Length); i < imax; i++)
         {
             sb.AppendLine($"{pathPre[i]} -> {pathAfter[i]}");
