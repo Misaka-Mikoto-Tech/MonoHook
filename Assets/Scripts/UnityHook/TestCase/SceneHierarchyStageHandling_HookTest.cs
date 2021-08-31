@@ -5,7 +5,7 @@ using UnityEditor;
 using System;
 using System.Reflection;
 
-[InitializeOnLoad]
+//[InitializeOnLoad]
 public class SceneHierarchyStageHandling_HookTest
 {
     private static MethodHook _hooker;
