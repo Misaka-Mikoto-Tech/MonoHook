@@ -109,7 +109,7 @@ public unsafe class MethodHook
         0x00, 0x00, 0x00, 0x00, // $val
         0x00, 0xBD, // POP {PC}
     };
-    private static readonly byte[] s_jmpBuff_arm64_v2 = new byte[]
+    private static readonly byte[] s_jmpBuff_arm64_v2 = new byte[] //source https://github.com/MonoMod/MonoMod.Common
     {
         0x4F, 0x00, 0x00, 0x58,
         0xE0, 0x01, 0x1F, 0xD6,
