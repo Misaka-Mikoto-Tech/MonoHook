@@ -1,4 +1,4 @@
-﻿/*
+/*
  Desc: 一个可以运行时 Hook Mono 方法的工具，让你可以无需修改 UnityEditor.dll 等文件就可以重写其函数功能
  Author: Misaka Mikoto
  Github: https://github.com/Misaka-Mikoto-Tech/MonoHook
@@ -10,7 +10,9 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 
@@ -107,6 +109,12 @@ public unsafe class MethodHook
         0x00, 0x00, 0x00, 0x00, // $val
         0x00, 0xBD, // POP {PC}
     };
+    private static readonly byte[] s_jmpBuff_arm64_v2 = new byte[] //source https://github.com/MonoMod/MonoMod.Common
+    {
+        0x4F, 0x00, 0x00, 0x58,
+        0xE0, 0x01, 0x1F, 0xD6,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+    };
     private static readonly byte[] s_jmpBuff_arm64 = new byte[]
     {
         0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
@@ -134,17 +142,20 @@ public unsafe class MethodHook
             if (IntPtr.Size == 4)
             {
                 s_jmpBuff = s_jmpBuff_arm32_arm;
-                //if (!LDasm.IsIL2CPP())
-                //    s_jmpBuff = s_jmpBuff_arm32_arm;
-                //else
-                //{
-                //    s_jmpBuff = s_jmpBuff_arm32_thumb;
-                //    s_addrOffset = 32;
-                //}
+                if (!LDasm.IsIL2CPP())
+                    s_jmpBuff = s_jmpBuff_arm32_arm;
+                else
+                {
+                    s_jmpBuff = s_jmpBuff_arm32_thumb;
+                    s_addrOffset = 32;
+                }
 
             }
             else
-                s_jmpBuff = s_jmpBuff_arm64;
+            {
+                s_addrOffset = 8;
+                s_jmpBuff = s_jmpBuff_arm64_v2;
+            }
         }
         else
         {
@@ -189,10 +200,14 @@ public unsafe class MethodHook
         if (isHooked)
             return;
 
+#if UNITY_EDITOR
         if (s_fi_GUISkin_current.GetValue(null) != null)
             DoInstall();
         else
             EditorApplication.update += OnEditorUpdate;
+        #else
+            DoInstall();
+        #endif
     }
     public void Uninstall()
     {
@@ -307,9 +322,13 @@ public unsafe class MethodHook
         if (!LDasm.IsIL2CPP())
             return;
 
+        #if UNITY_ANDROID
+        IL2CPPHelper.SetMemPerms(ptr,size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
+        #else
         uint oldProtect;
         bool ret = IL2CPPHelper.VirtualProtect(ptr, size, IL2CPPHelper.Protection.PAGE_EXECUTE_READWRITE, out oldProtect);
         UnityEngine.Debug.Assert(ret);
+        #endif
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)] // 好像在 IL2CPP 里无效
@@ -357,6 +376,7 @@ public unsafe class MethodHook
         }
     }
 
+    #if UNITY_EDITOR
     private void OnEditorUpdate()
     {
         if(s_fi_GUISkin_current.GetValue(null) != null)
@@ -365,6 +385,7 @@ public unsafe class MethodHook
             EditorApplication.update -= OnEditorUpdate;
         }
     }
+    #endif
 
 #endregion
 }
