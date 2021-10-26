@@ -610,16 +610,11 @@ namespace DotNetDetour
         public static uint SizeofMinNumByte(void* code, int size)
         {
             if (IsAndroidARM())
-            {
-                if (IsIL2CPP())
-                    return CalcARMThumbMinLen(code, size);
-                else
-                    return (uint)((size + 3) / 4) * 4; // 此为 jit 模式下的长度
-            }
+                return (uint)((size + 3) / 4) * 4; // 此为 jit 模式下的长度，不再支持 thumb
 
-            UInt32 Length;
+            uint Length;
             byte* pOpcode;
-            UInt32 Result = 0;
+            uint Result = 0;
             ldasm_data data = new ldasm_data();
             bool is64 = IntPtr.Size == 8;
             do
@@ -665,6 +660,11 @@ namespace DotNetDetour
                 isIL2CPP = true;
             }
             return isIL2CPP;
+        }
+
+        public static bool IsThumb(IntPtr code)
+        {
+            return ((long)code & 0x1) == 0x1;
         }
 
         /// <summary>

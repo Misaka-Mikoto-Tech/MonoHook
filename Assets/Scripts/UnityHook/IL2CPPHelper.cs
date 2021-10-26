@@ -1,3 +1,4 @@
+﻿using DotNetDetour;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,6 +9,26 @@ using UnityEngine;
 
 public static class IL2CPPHelper
 {
+    /// <summary>
+    /// set flags of address to `read write execute`
+    /// </summary>
+    public static void SetAddrFlagsToRWE(IntPtr ptr, int size)
+    {
+#if UNITY_STANDALONE_WIN
+
+        uint oldProtect;
+        bool ret = VirtualProtect(ptr, (uint)size, Protection.PAGE_EXECUTE_READWRITE, out oldProtect);
+        UnityEngine.Debug.Assert(ret);
+
+#elif UNITY_ANDROID
+
+    SetMemPerms(ptr,size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
+
+#endif
+    }
+
+#if UNITY_STANDALONE_WIN
+    [Flags]
     public enum Protection
     {
         PAGE_NOACCESS           = 0x01,
@@ -22,7 +43,21 @@ public static class IL2CPPHelper
         PAGE_NOCACHE            = 0x200,
         PAGE_WRITECOMBINE       = 0x400
     }
-#if UNITY_ANDROID
+
+    [DllImport("kernel32")]
+    public static extern bool VirtualProtect(IntPtr lpAddress, uint dwSize, Protection flNewProtect, out uint lpflOldProtect);
+
+#elif UNITY_ANDROID
+    [Flags]
+    public enum MmapProts : int {
+        PROT_READ       = 0x1,
+        PROT_WRITE      = 0x2,
+        PROT_EXEC       = 0x4,
+        PROT_NONE       = 0x0,
+        PROT_GROWSDOWN  = 0x01000000,
+        PROT_GROWSUP    = 0x02000000,
+    }
+
     static IL2CPPHelper()
     {
         PropertyInfo p_SystemPageSize = typeof(Environment).GetProperty("SystemPageSize");
@@ -43,30 +78,10 @@ public static class IL2CPPHelper
         if (mprotect((IntPtr) startPage, (IntPtr) (endPage - startPage), prot) != 0)
             throw new Win32Exception();
     }
-    
-    
-    
-#elif UNITY_STANDALONE_WIN
 
-    [DllImport("kernel32")]
-    public static extern bool VirtualProtect(IntPtr lpAddress, uint dwSize, Protection flNewProtect, out uint lpflOldProtect);
-#else
-    // mprotect
-    public static bool VirtualProtect(IntPtr lpAddress, uint dwSize, Protection flNewProtect, out uint lpflOldProtect)
-    {
-        lpflOldProtect = 0;
-        return false;
-    }
 #endif
+
 }
 
 
-[Flags]
-public enum MmapProts : int {
-    PROT_READ = 0x1,
-    PROT_WRITE = 0x2,
-    PROT_EXEC = 0x4,
-    PROT_NONE = 0x0,
-    PROT_GROWSDOWN = 0x01000000,
-    PROT_GROWSUP = 0x02000000,
-}
+

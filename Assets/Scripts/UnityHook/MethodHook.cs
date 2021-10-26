@@ -1,4 +1,4 @@
-/*
+﻿/*
  Desc: 一个可以运行时 Hook Mono 方法的工具，让你可以无需修改 UnityEditor.dll 等文件就可以重写其函数功能
  Author: Misaka Mikoto
  Github: https://github.com/Misaka-Mikoto-Tech/MonoHook
@@ -71,61 +71,49 @@ public unsafe class MethodHook
     private IntPtr      _replacementPtr;
     private IntPtr      _proxyPtr;
 
-    private static readonly byte[] s_jmpBuff;
-    private static readonly byte[] s_jmpBuff_32 = new byte[] // 6 bytes
+    private struct JmpCode
+    {
+        public int codeSize { get { return code.Length; } }
+
+        public readonly byte[]  code;
+        public readonly int     addrOffset;
+
+        public JmpCode(byte[] code_, int addrOffset_) { code = code_; addrOffset = addrOffset_; }
+    }
+
+#region jump buffer template define
+
+    private static readonly JmpCode s_jmpCode_x86 = new JmpCode(new byte[] // 6 bytes
     {
         0x68, 0x00, 0x00, 0x00, 0x00,                       // push $val
         0xC3                                                // ret
-    };
-    private static readonly byte[] s_jmpBuff_64 = new byte[] // 14 bytes
+    }, 1);
+    private static readonly JmpCode s_jmpCode_x64 = new JmpCode(new byte[] // 14 bytes
     {
         0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,                 // jmp [rip]
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // $val
-    };
-    private static readonly byte[] s_jmpBuff_arm32_arm = new byte[] // 8 bytes
+    }, 6);
+    private static readonly JmpCode s_jmpCode_arm32_arm = new JmpCode(new byte[] // 8 bytes
     {
         0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
         0x00, 0x00, 0x00, 0x00,                             // $val
-    };
-    private static readonly byte[] s_jmpBuff_arm32_thumb = new byte[] // 38 bytes
+    }, 4);
+    private static readonly JmpCode s_jmpCode_arm64 = new JmpCode(new byte[] //source https://github.com/MonoMod/MonoMod.Common
     {
-        0x00, 0xB5, // PUSH {LR}
-        0x10, 0xB4, // PUSH {R0}
-        0x03, 0xB4, // PUSH {R0, R1}
-        0x78, 0x46, // MOV R0, PC
-        0x16, 0x30, // ADD R0, #0x16
-        0x00, 0x68, // LDR R0, [R0, #0x00]
-        0x69, 0x46, // MOV R1, SP
-        0x08, 0x31, // ADD R1, #0x08
-        0x08, 0x60, // STR R0, [R1, #0x00]
-        0x79, 0x46, // MOV R1, PC
-        0x0E, 0x31, // ADD R1, #0x0E
-        0x8E, 0x46, // MOV LR, R1
-        0x01, 0xBC, // POP {R0}
-        0x02, 0xBC, // POP {R1}
-        0x00, 0xBD, // POP {PC}
-        0xC0, 0x46, // NOP
+        0x4F, 0x00, 0x00, 0x58,                         // LDR X15, .+8
+        0xE0, 0x01, 0x1F, 0xD6,                         // BR X15
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // $val
+    }, 8);
 
-        0x00, 0x00, 0x00, 0x00, // $val
-        0x00, 0xBD, // POP {PC}
-    };
-    private static readonly byte[] s_jmpBuff_arm64_v2 = new byte[] //source https://github.com/MonoMod/MonoMod.Common
-    {
-        0x4F, 0x00, 0x00, 0x58,
-        0xE0, 0x01, 0x1F, 0xD6,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-    };
-    private static readonly byte[] s_jmpBuff_arm64 = new byte[]
-    {
-        0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // $val
-    };
-    private static readonly int             s_addrOffset;
+    // arm thumb arch support has removed
 
+    #endregion
 
-    private byte[]      _jmpBuff;
-    private byte[]      _proxyBuff;
+    private static readonly JmpCode s_jmpCode;
 
+    private byte[]                  _targetHeaderBackup;
+
+#if UNITY_EDITOR
     /// <summary>
     /// call `MethodInfo.MethodHandle.GetFunctionPointer()` 
     /// will visit static class `UnityEditor.IMGUI.Controls.TreeViewGUI.Styles` and invoke its static constructor,
@@ -133,45 +121,18 @@ public unsafe class MethodHook
     /// so we should wait until `GUISKin.current` has a valid value
     /// </summary>
     private static FieldInfo s_fi_GUISkin_current;
+#endif
 
     static MethodHook()
     {
         if (LDasm.IsAndroidARM())
-        {
-            s_addrOffset = 4;
-            if (IntPtr.Size == 4)
-            {
-                s_jmpBuff = s_jmpBuff_arm32_arm;
-                if (!LDasm.IsIL2CPP())
-                    s_jmpBuff = s_jmpBuff_arm32_arm;
-                else
-                {
-                    s_jmpBuff = s_jmpBuff_arm32_thumb;
-                    s_addrOffset = 32;
-                }
+            s_jmpCode = IntPtr.Size == 4 ? s_jmpCode_arm32_arm : s_jmpCode_arm64;
+        else // x86/x64
+            s_jmpCode = IntPtr.Size == 4 ? s_jmpCode_x86 : s_jmpCode_x64;
 
-            }
-            else
-            {
-                s_addrOffset = 8;
-                s_jmpBuff = s_jmpBuff_arm64_v2;
-            }
-        }
-        else
-        {
-            if (IntPtr.Size == 4)
-            {
-                s_jmpBuff = s_jmpBuff_32;
-                s_addrOffset = 1;
-            }
-            else
-            {
-                s_jmpBuff = s_jmpBuff_64;
-                s_addrOffset = 6;
-            }
-        }
-
+#if UNITY_EDITOR
         s_fi_GUISkin_current = typeof(GUISkin).GetField("current", BindingFlags.Static | BindingFlags.NonPublic);
+#endif
     }
 
     /// <summary>
@@ -185,8 +146,6 @@ public unsafe class MethodHook
         _targetMethod       = targetMethod;
         _replacementMethod  = replacementMethod;
         _proxyMethod        = proxyMethod;
-
-        _jmpBuff = new byte[s_jmpBuff.Length];
     }
 
     public void Install()
@@ -205,18 +164,19 @@ public unsafe class MethodHook
             DoInstall();
         else
             EditorApplication.update += OnEditorUpdate;
-        #else
+#else
             DoInstall();
-        #endif
+#endif
     }
+
     public void Uninstall()
     {
         if (!isHooked)
             return;
 
         byte* pTarget = (byte*)_targetPtr.ToPointer();
-        for (int i = 0; i < _proxyBuff.Length; i++)
-            *pTarget++ = _proxyBuff[i];
+        for (int i = 0; i < _targetHeaderBackup.Length; i++)
+            *pTarget++ = _targetHeaderBackup[i];
 
         isHooked = false;
         HookPool.RemoveHooker(_targetMethod);
@@ -227,37 +187,35 @@ public unsafe class MethodHook
     {
         HookPool.AddHooker(_targetMethod, this);
 
-        GetFunctionAddr();
-        InitProxyBuff();
-        BackupHeader();
-        PatchTargetMethod();
-        PatchProxyMethod();
-
+        if(GetFunctionAddr())
+        {
+            BackupHeader();
+            PatchTargetMethod();
+            PatchProxyMethod();
+        }
+        
         isHooked = true;
     }
 
     /// <summary>
     /// 获取对应函数jit后的native code的地址
     /// </summary>
-    private void GetFunctionAddr()
+    private bool GetFunctionAddr()
     {
         _targetPtr = GetFunctionAddr(_targetMethod);
         _replacementPtr = GetFunctionAddr(_replacementMethod);
         if (_proxyMethod != null)
             _proxyPtr = GetFunctionAddr(_proxyMethod);
-    }
 
-    /// <summary>
-    ///  根据具体指令填充 ProxyBuff
-    /// </summary>
-    /// <returns></returns>
-    private void InitProxyBuff()
-    {
-        byte* pTarget = (byte*)_targetPtr.ToPointer();
+        if (_targetPtr == IntPtr.Zero || _proxyPtr == IntPtr.Zero)
+            return false;
 
-        uint requireSize = DotNetDetour.LDasm.SizeofMinNumByte(pTarget, s_jmpBuff.Length);
-        _proxyBuff = new byte[requireSize];
-        EnableAddrModifiable(_targetPtr, requireSize);
+        if(LDasm.IsThumb(_targetPtr) || LDasm.IsThumb(_replacementPtr))
+        {
+            throw new Exception("does not support thumb arch");
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -266,30 +224,29 @@ public unsafe class MethodHook
     private void BackupHeader()
     {
         byte* pTarget = (byte*)_targetPtr.ToPointer();
-        for (int i = 0; i < _proxyBuff.Length; i++)
-            _proxyBuff[i] = *pTarget++;
+
+        uint requireSize = LDasm.SizeofMinNumByte(pTarget, s_jmpCode.codeSize);
+        _targetHeaderBackup = new byte[requireSize];
+
+        for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
+            _targetHeaderBackup[i] = *pTarget++;
     }
 
     // 将原始方法跳转到我们的方法
     private void PatchTargetMethod()
     {
-        Array.Copy(s_jmpBuff, _jmpBuff, _jmpBuff.Length);
-        fixed (byte* p = &_jmpBuff[s_addrOffset])
-        {
-            if(IntPtr.Size == 4)
-                *((uint*)p) = (uint)_replacementPtr.ToInt32();
-            else
-                *((ulong*)p) = (ulong)_replacementPtr.ToInt64();
-        }
+        EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
 
         byte* pTarget = (byte*)_targetPtr.ToPointer();
-        
-        if(pTarget != null)
-        {
-            for (int i = 0, imax = _jmpBuff.Length; i < imax; i++)
-                *pTarget++ = _jmpBuff[i];
-        }
-        
+        byte* pAddr = pTarget + s_jmpCode.addrOffset;
+
+        for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
+            *pTarget++ = s_jmpCode.code[i];
+
+        if (IntPtr.Size == 4)
+            *(uint*)pAddr = (uint)_replacementPtr.ToInt32();
+        else
+            *(ulong*)pAddr = (ulong)_replacementPtr.ToInt64();
     }
 
     /// <summary>
@@ -297,38 +254,32 @@ public unsafe class MethodHook
     /// </summary>
     private void PatchProxyMethod()
     {
-        if (_proxyPtr == IntPtr.Zero)
-            return;
+        EnableAddrModifiable(_proxyPtr, _targetHeaderBackup.Length + s_jmpCode.codeSize);
 
-        EnableAddrModifiable(_proxyPtr, (uint)_proxyBuff.Length);
         byte * pProxy = (byte*)_proxyPtr.ToPointer();
-        for (int i = 0; i < _proxyBuff.Length; i++)     // 先填充头
-            *pProxy++ = _proxyBuff[i];
 
-        fixed (byte* p = &_jmpBuff[s_addrOffset])                  // 将跳转指向原函数跳过头的位置
-        {
-            if (IntPtr.Size == 4)
-                * ((uint*)p) = (uint)_targetPtr.ToInt32() + (uint)_proxyBuff.Length;
-            else
-                *((ulong*)p) = (ulong)_targetPtr.ToInt64() + (ulong)_proxyBuff.Length;
-        }
+        // fill backuped original target header code
+        for (int i = 0; i < _targetHeaderBackup.Length; i++)
+            *pProxy++ = _targetHeaderBackup[i];
 
-        for (int i = 0; i < _jmpBuff.Length; i++)       // 再填充跳转
-            *pProxy++ = _jmpBuff[i];
+        // fill jump code
+        byte* pAddr = pProxy + s_jmpCode.addrOffset;
+        for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
+            *pProxy++ = s_jmpCode.code[i];
+
+        // fill jmp addr value(to target method)
+        if (IntPtr.Size == 4)
+            *(uint*)pAddr = (uint)_targetPtr.ToInt32() + (uint)_targetHeaderBackup.Length;
+        else
+            *(ulong*)pAddr = (ulong)_targetPtr.ToInt64() + (ulong)_targetHeaderBackup.Length;
     }
 
-    private void EnableAddrModifiable(IntPtr ptr, uint size)
+    private void EnableAddrModifiable(IntPtr ptr, int size)
     {
         if (!LDasm.IsIL2CPP())
             return;
 
-        #if UNITY_ANDROID
-        IL2CPPHelper.SetMemPerms(ptr,size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
-        #else
-        uint oldProtect;
-        bool ret = IL2CPPHelper.VirtualProtect(ptr, size, IL2CPPHelper.Protection.PAGE_EXECUTE_READWRITE, out oldProtect);
-        UnityEngine.Debug.Assert(ret);
-        #endif
+        IL2CPPHelper.SetAddrFlagsToRWE(ptr, size);
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)] // 好像在 IL2CPP 里无效
@@ -376,7 +327,7 @@ public unsafe class MethodHook
         }
     }
 
-    #if UNITY_EDITOR
+#if UNITY_EDITOR
     private void OnEditorUpdate()
     {
         if(s_fi_GUISkin_current.GetValue(null) != null)
@@ -385,7 +336,7 @@ public unsafe class MethodHook
             EditorApplication.update -= OnEditorUpdate;
         }
     }
-    #endif
+#endif
 
 #endregion
 }
