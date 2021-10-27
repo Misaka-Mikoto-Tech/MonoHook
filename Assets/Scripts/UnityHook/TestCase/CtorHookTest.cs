@@ -1,4 +1,5 @@
-﻿/*
+﻿#if ENABLE_HOOK_TEST_CASE
+/*
  * 构造函数 Hook 测试
  * */
 using System;
@@ -46,3 +47,4 @@ public class CtorHookTest
         Debug.Log("CtorTargetProxy");
     }
 }
+#endif

@@ -1,4 +1,5 @@
-﻿/*
+﻿#if ENABLE_HOOK_TEST_CASE
+/*
  * 实例方法 Hook 测试用例
  * note: 静态方法 Hook 参考 PinnedLog.cs
  */
@@ -73,3 +74,4 @@ public class InstanceMethodTest
     
 
 }
+#endif

@@ -299,6 +299,39 @@ public unsafe class MethodHook
             return method.MethodHandle.GetFunctionPointer();
         else
         {
+            /*
+                // System.Reflection.MonoMethod
+                typedef struct Il2CppReflectionMethod
+                {
+                    Il2CppObject object;
+                    const MethodInfo *method;
+                    Il2CppString *name;
+                    Il2CppReflectionType *reftype;
+                } Il2CppReflectionMethod;
+
+                typedef Il2CppClass Il2CppVTable;
+                typedef struct Il2CppObject
+                {
+                    union
+                    {
+                        Il2CppClass *klass;
+                        Il2CppVTable *vtable;
+                    };
+                    MonitorData *monitor;
+                } Il2CppObject;
+
+            typedef struct MethodInfo
+            {
+                Il2CppMethodPointer methodPointer; // this is the pointer to native code of method
+                InvokerMethod invoker_method;
+                const char* name;
+                Il2CppClass *klass;
+                const Il2CppType *return_type;
+                const ParameterInfo* parameters;
+            // ...
+            }
+             */
+
             __ForCopy __forCopy = new __ForCopy() { method = method };
 
             long* ptr = &__forCopy.__dummy;

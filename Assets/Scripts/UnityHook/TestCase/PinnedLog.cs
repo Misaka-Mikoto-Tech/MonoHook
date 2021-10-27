@@ -1,4 +1,5 @@
-﻿/*
+﻿#if ENABLE_HOOK_TEST_CASE
+/*
  Desc: 不会被Unity Clear按钮清掉的日志
  Author: Misaka Mikoto
  Github: https://github.com/Misaka-Mikoto-Tech/MonoHook
@@ -19,7 +20,7 @@ using UnityEditor.Callbacks;
 /// <summary>
 /// 不会被清掉的日志
 /// </summary>
-[InitializeOnLoad]
+//[InitializeOnLoad]
 public static class PinnedLog
 {
     private static Dictionary<int, string> _msgs = new Dictionary<int, string>(); // 点击编辑器运行按钮时会被Unity清空
@@ -103,4 +104,5 @@ public class PinnedLog
     {
     }
 }
+#endif
 #endif

@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if ENABLE_HOOK_TEST_CASE
+#if UNITY_EDITOR
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -67,3 +69,5 @@ public class ProjectWindow_DuplicateAsset_HookTest
         // dummy
     }
 }
+#endif
+#endif

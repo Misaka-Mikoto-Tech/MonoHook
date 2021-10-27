@@ -1,4 +1,5 @@
-﻿/*
+﻿#if ENABLE_HOOK_TEST_CASE
+/*
  * 对 GameObject.SetActive 进行hook的测试用例
  */
 using System;
@@ -8,12 +9,17 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-[InitializeOnLoad]
+//[InitializeOnLoad]
 public static class GameObject_SetActive_HookTest
 {
     private static MethodHook _hook;
 
     static GameObject_SetActive_HookTest()
+    {
+        Init();
+    }
+
+    public static void Init()
     {
         if (_hook == null)
         {
@@ -41,3 +47,4 @@ public static class GameObject_SetActive_HookTest
         // dummy
     }
 }
+#endif

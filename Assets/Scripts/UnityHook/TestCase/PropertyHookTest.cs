@@ -1,4 +1,5 @@
-﻿/*
+﻿#if ENABLE_HOOK_TEST_CASE
+/*
  * 属性 Hook 测试用例
  */
 using System;
@@ -65,3 +66,4 @@ public class PropertyHookTest
     }
 	
 }
+#endif

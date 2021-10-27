@@ -1,3 +1,5 @@
+#if ENABLE_HOOK_TEST_CASE
+#if UNITY_EDITOR
 /*
  * 测试修改SceneView摄像机加速移动函数的实现（默认是 Mathf.Pow(1.8f, deltaTime)）
  */
@@ -157,3 +159,5 @@ public static class SceneViewMoveFunc_HookTest
 
     
 }
+#endif
+#endif

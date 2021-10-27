@@ -1,4 +1,5 @@
-﻿/*
+﻿#if ENABLE_HOOK_TEST_CASE
+/*
  * 方法参数是私有类型的Hook测试用例
  */
 using System;
@@ -73,3 +74,4 @@ public class PrivateTypeArgMethodTest
         privateTestA.FuncTest();
     }
 }
+#endif

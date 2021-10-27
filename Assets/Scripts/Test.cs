@@ -10,6 +10,9 @@ public class Test : MonoBehaviour
     public Button btn;
     public Text   txtInfo;
 
+    #region test case
+#if ENABLE_HOOK_TEST_CASE
+
     private int _msgId;
 
     private void Awake()
@@ -18,6 +21,8 @@ public class Test : MonoBehaviour
     }
     private void Start()
     {
+        PinnedLog.ClearAll();
+
         Debug.Log("普通日志");
         Debug.LogError("普通错误");
 
@@ -40,6 +45,7 @@ public class Test : MonoBehaviour
         ctorHookTest.Test();
 
         // 测试GameObject.SetActive
+        GameObject_SetActive_HookTest.Init();
         btn.gameObject.SetActive(false);
         btn.gameObject.SetActive(true);
     }
@@ -63,4 +69,6 @@ public class Test : MonoBehaviour
         PinnedLog.RemoveMsg(_msgId);
         PinnedLog.ClearAll();
     }
+#endif
+    #endregion
 }

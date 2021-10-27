@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿#if ENABLE_HOOK_TEST_CASE
+#if UNITY_EDITOR
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -46,3 +48,5 @@ public class SceneHierarchyStageHandling_HookTest
 
 
 }
+#endif
+#endif

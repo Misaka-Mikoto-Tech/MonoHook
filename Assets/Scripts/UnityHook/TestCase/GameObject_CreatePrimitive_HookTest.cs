@@ -1,3 +1,5 @@
+#if ENABLE_HOOK_TEST_CASE
+#if UNITY_EDITOR
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -39,3 +41,5 @@ public class GameObject_CreatePrimitive_HookTest
         // dummy
     }
 }
+#endif
+#endif

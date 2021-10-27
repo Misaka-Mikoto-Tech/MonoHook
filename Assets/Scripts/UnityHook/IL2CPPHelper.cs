@@ -22,7 +22,7 @@ public static class IL2CPPHelper
 
 #elif UNITY_ANDROID
 
-    SetMemPerms(ptr,size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
+    SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
 
 #endif
     }
