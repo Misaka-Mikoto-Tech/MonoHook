@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class PropClassA
@@ -13,6 +14,7 @@ public class PropClassA
     public int X
     {
         get { return _x; }
+        [MethodImpl(MethodImplOptions.NoInlining)]
         set
         {
             _x = value;
@@ -34,17 +36,16 @@ public class PropClassB
         Debug.LogFormat("PropXSetReplace with value:{0}", val);
 
         val += 1;
-        PropXSetProxy(val);
-    }
 
-    public void PropXSetProxy(int val)
-    {
-        Debug.Log("PropXSetProxy");
+        Debug.Assert(this.GetType() == typeof(PropClassA));
+
+        HookPool.GetHook(typeof(PropClassA).GetProperty("X").GetSetMethod()).RunWithoutPatch(this, val);
     }
 }
 
 public class PropertyHookTest
 {
+    public static MethodHook hook;
     public void Test()
     {
         Type typeA = typeof(PropClassA);
@@ -54,11 +55,9 @@ public class PropertyHookTest
         MethodInfo miASet = pi.GetSetMethod();
 
         MethodInfo miBReplace = typeB.GetMethod("PropXSetReplace");
-        MethodInfo miBProxy = typeB.GetMethod("PropXSetProxy");
-        Debug.Log($"PropertyHook of miBProxy is not null {miBProxy != null}");
 
-        MethodHook hooker = new MethodHook(miASet, miBReplace, miBProxy);
-        hooker.Install();
+        hook = new MethodHook(miASet, miBReplace);
+        hook.Install();
 
         PropClassA a = new PropClassA(5);
         a.X = 7;

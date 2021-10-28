@@ -32,7 +32,7 @@ public class ProjectWindow_DuplicateAsset_HookTest
             MethodInfo miReplacement = type.GetMethod("DuplicateSelectedAssets", BindingFlags.Static | BindingFlags.NonPublic);
             MethodInfo miProxy = type.GetMethod("DuplicateSelectedAssetsProxy", BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hook = new MethodHook(miTarget, miReplacement, miProxy);
+            _hook = new MethodHook(miTarget, miReplacement);
             _hook.Install();
         }
     }
@@ -40,7 +40,7 @@ public class ProjectWindow_DuplicateAsset_HookTest
     private static void DuplicateSelectedAssets()
     {
         var selectedsPre = Selection.objects;
-        DuplicateSelectedAssetsProxy();
+        _hook.RunWithoutPatch(null, null);
         var selectedAfter = Selection.objects;
 
         Debug.Assert(selectedsPre.Length == selectedAfter.Length);
@@ -62,11 +62,6 @@ public class ProjectWindow_DuplicateAsset_HookTest
         }
 
         Debug.Log(sb.ToString());
-    }
-
-    private static void DuplicateSelectedAssetsProxy()
-    {
-        // dummy
     }
 }
 #endif

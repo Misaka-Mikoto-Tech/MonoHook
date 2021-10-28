@@ -29,22 +29,16 @@ public static class GameObject_SetActive_HookTest
 
             type = typeof(GameObject_SetActive_HookTest);
             MethodInfo miReplacement = type.GetMethod("SetActiveNew", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("SetActiveProxy", BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hook = new MethodHook(miTarget, miReplacement, miProxy);
+            _hook = new MethodHook(miTarget, miReplacement);
             _hook.Install();
         }
     }
 
     private static void SetActiveNew(GameObject go, bool value)
     {
-        SetActiveProxy(go, value);
+        _hook.RunWithoutPatch(()=> go.SetActive(value));
         Debug.LogFormat("GameObject [{0}] SetActive({1})", go.name, value);
-    }
-
-    private static void SetActiveProxy(GameObject go, bool value)
-    {
-        // dummy
     }
 }
 #endif

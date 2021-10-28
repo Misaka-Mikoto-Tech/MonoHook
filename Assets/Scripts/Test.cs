@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DotNetDetour;
+using System;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
@@ -9,6 +10,7 @@ public class Test : MonoBehaviour
 {
     public Button btn;
     public Text   txtInfo;
+    public Text   txtTestVal;
 
     #region test case
 #if ENABLE_HOOK_TEST_CASE
@@ -17,9 +19,20 @@ public class Test : MonoBehaviour
 
     private void Awake()
     {
-        btn.onClick.AddListener(OnBtnClick);
+        btn.onClick.AddListener(OnBtnTestClick);
     }
     private void Start()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.AppendFormat("pointer size:{0}\r\n", System.IntPtr.Size);
+        sb.AppendFormat("is IL2CPP:{0}\r\n", LDasm.IsIL2CPP());
+        sb.AppendFormat("operation name:{0}\r\n", SystemInfo.operatingSystem);
+        sb.AppendFormat("processorType:{0}\r\n", SystemInfo.processorType);
+        sb.AppendLine();
+        txtInfo.text = sb.ToString();
+    }
+
+    public void OnBtnTestClick()
     {
         PinnedLog.ClearAll();
 
@@ -30,7 +43,7 @@ public class Test : MonoBehaviour
 
         // 实例方法替换测试
         InstanceMethodTest InstanceTest = new InstanceMethodTest();
-        InstanceTest.Test();
+        txtTestVal.text = $"InstanceTest: {InstanceTest.Test()}";
 
         // 属性替换测试
         PropertyHookTest propTest = new PropertyHookTest();
@@ -44,27 +57,10 @@ public class Test : MonoBehaviour
         CtorHookTest ctorHookTest = new CtorHookTest();
         ctorHookTest.Test();
 
-        // 测试GameObject.SetActive
+        //// 测试GameObject.SetActive
         GameObject_SetActive_HookTest.Init();
         btn.gameObject.SetActive(false);
         btn.gameObject.SetActive(true);
-    }
-
-    public void OnBtnClick()
-    {
-        StringBuilder sb = new StringBuilder();
-        sb.AppendFormat("pointer size:{0}\r\n", System.IntPtr.Size);
-        sb.AppendFormat("operation name:{0}\r\n", SystemInfo.operatingSystem);
-        sb.AppendFormat("processorType:{0}\r\n", SystemInfo.processorType);
-        sb.AppendLine();
-        txtInfo.text = sb.ToString();
-
-        // 测试实例方法替换
-        InstanceMethodTest InstanceTest = new InstanceMethodTest();
-        sb.Length = 0;
-        string info = InstanceTest.Test();
-        sb.AppendLine(info);
-        txtInfo.text += sb.ToString();
 
         PinnedLog.RemoveMsg(_msgId);
         PinnedLog.ClearAll();

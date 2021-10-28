@@ -23,29 +23,17 @@ public class SceneHierarchyStageHandling_HookTest
 #endif
             var dst = typeof(SceneHierarchyStageHandling_HookTest).GetMethod("PrefabStageHeaderGUINew",
                 BindingFlags.Static | BindingFlags.NonPublic);
-            var old = typeof(SceneHierarchyStageHandling_HookTest).GetMethod("PrefabStageHeaderGUIOld",
-                BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hooker = new MethodHook(target, dst, old);
+            _hooker = new MethodHook(target, dst);
             _hooker.Install();
         }
     }
     static void PrefabStageHeaderGUINew(object handle, Rect rect)
     {
-        PrefabStageHeaderGUIOld(handle, rect);
+        _hooker.RunWithoutPatch(handle, rect);
         GUILayout.Button("^wow^");
         // GUI.Button(new Rect(rect.xMax - 100, rect.y, 16, rect.height), "x");
     }
-    static void PrefabStageHeaderGUIOld(object handle, Rect rect)
-    {
-        // 随便乱写点东西以占据空间
-        for (int i = 0; i < 100; i++)
-        {
-            UnityEngine.Debug.Log("something");
-        }
-        UnityEngine.Debug.Log(Application.targetFrameRate);
-    }
-
 
 }
 #endif

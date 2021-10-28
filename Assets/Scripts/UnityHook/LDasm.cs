@@ -646,20 +646,26 @@ namespace DotNetDetour
             return UnityEngine.SystemInfo.operatingSystem.ToLower().Contains("ios");
         }
 
+        static bool? s_isIL2CPP;
         public static bool IsIL2CPP()
         {
-            bool isIL2CPP = false;
+            if (s_isIL2CPP.HasValue)
+                return s_isIL2CPP.Value;
+
             try
             {
                 byte[] ilBody = typeof(LDasm).GetMethod("IsIL2CPP").GetMethodBody().GetILAsByteArray();
                 if (ilBody == null || ilBody.Length == 0)
-                    isIL2CPP = true;
+                    s_isIL2CPP = true;
+                else
+                    s_isIL2CPP = false;
             }
             catch
             {
-                isIL2CPP = true;
+                s_isIL2CPP = true;
             }
-            return isIL2CPP;
+
+            return s_isIL2CPP.Value;
         }
 
         public static bool IsThumb(IntPtr code)

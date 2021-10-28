@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class PrivateTestA
@@ -29,6 +30,8 @@ public class PrivateTestA
         InnerClass innerClass = new InnerClass() { x = 2 };
         InnerFuncTest(innerClass, InnerEnum.E1);
     }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private void InnerFuncTest(InnerClass innerClass, InnerEnum innerEnum)
     {
         Debug.LogFormat("InnerTypeTest:innerClass.x:{0}, innerEnum:{1}, val:{2}", innerClass.x, innerEnum.ToString(), _val);
@@ -47,17 +50,13 @@ public class PrivateTestB
     {
         Debug.Log("PrivateTestB.FuncReplace called");
         innerEnum += 1;
-        Proxy(innerClass, innerEnum);
-    }
-
-    public  void Proxy(object innerClass, short innerEnum)
-    {
-        Debug.Log("something");
+        PrivateTypeArgMethodTest.hook.RunWithoutPatch(this, innerClass, innerEnum);
     }
 }
 
 public class PrivateTypeArgMethodTest
 {
+    public static MethodHook hook;
     public void Test()
     {
         Type typeA = typeof(PrivateTestA);
@@ -67,8 +66,8 @@ public class PrivateTypeArgMethodTest
         MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
         MethodInfo miBProxy = typeB.GetMethod("Proxy");
 
-        MethodHook hooker = new MethodHook(miAPrivateFunc, miBReplace, miBProxy);
-        hooker.Install();
+        hook = new MethodHook(miAPrivateFunc, miBReplace);
+        hook.Install();
 
         PrivateTestA privateTestA = new PrivateTestA();
         privateTestA.FuncTest();

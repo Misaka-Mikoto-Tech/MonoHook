@@ -99,9 +99,8 @@ public static class SceneViewMoveFunc_HookTest
 
             Type type = typeof(SceneViewMoveFunc_HookTest);
             MethodInfo miReplacement = type.GetMethod("GetMovementDirectionNew", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("GetMovementDirectionProxy", BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hook = new MethodHook(miTarget, miReplacement, miProxy);
+            _hook = new MethodHook(miTarget, miReplacement);
             _hook.Install();
 
             Debug.Log("已重定义SceneView摄像机移动速度");
@@ -150,14 +149,6 @@ public static class SceneViewMoveFunc_HookTest
         }
         return s_FlySpeed.value * deltaTime;
     }
-
-    private static Vector3 GetMovementDirectionProxy()
-    {
-        // dummy
-        return Vector3.zero;
-    }
-
-    
 }
 #endif
 #endif

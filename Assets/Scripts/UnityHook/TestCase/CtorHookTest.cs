@@ -6,11 +6,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class CtorHookTarget
 {
     public int x;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public CtorHookTarget(int x)
     {
         this.x = x;
@@ -20,6 +23,7 @@ public class CtorHookTarget
 
 public class CtorHookTest
 {
+    public static MethodHook hook;
     public void Test()
     {
         Type typeA = typeof(CtorHookTarget);
@@ -27,10 +31,9 @@ public class CtorHookTest
 
         MethodBase mbCtorA = typeA.GetConstructor(new Type[] { typeof(int) });
         MethodBase mbReplace = typeB.GetMethod("CtorTargetReplace");
-        MethodBase mbProxy = typeB.GetMethod("CtorTargetProxy");
 
-        MethodHook hookder = new MethodHook(mbCtorA, mbReplace, mbProxy);
-        hookder.Install();
+        hook = new MethodHook(mbCtorA, mbReplace);
+        hook.Install();
 
         CtorHookTarget hookTarget = new CtorHookTarget(1);
         Debug.Assert(hookTarget.x == 2);
@@ -38,13 +41,10 @@ public class CtorHookTest
 
     public void CtorTargetReplace(int x)
     {
-        x += 1;
-        CtorTargetProxy(x);
-    }
+        Debug.Log("CtorTargetReplace");
 
-    public void CtorTargetProxy(int x)
-    {
-        Debug.Log("CtorTargetProxy");
+        x += 1;
+        CtorHookTest.hook.RunWithoutPatch(this, x); // scope now is CtorHookTarget,not CtorHookTest, so we should use static var
     }
 }
 #endif

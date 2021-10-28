@@ -7,6 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 
@@ -14,34 +15,11 @@ public class A
 {
     public int val;
 
+    [MethodImpl(MethodImplOptions.NoInlining)] // without this will hook fail at il2cpp release mode
     public int Func(int x)
     {
         Debug.Log("call of A.Func");
         return x + val;
-    }
-}
-
-public class B
-{
-    public int FuncReplace(int x)
-    {
-        object obj = this;
-        A a = obj as A;
-        Debug.Log("call of B.Func");
-        x += 1;
-        a.val = 7;
-
-        // 可以调用原方法或者不调用
-        if (x < 100)
-            return FuncProxy(x);
-        else
-            return x + 1;
-    }
-
-    public int FuncProxy(int x)
-    {
-        Debug.Log("随便乱写");
-        return x;
     }
 }
 
@@ -50,18 +28,32 @@ public class B
 /// </summary>
 public class InstanceMethodTest
 {
+    static MethodHook _hook;
+
+    public static int FuncReplace(A a, int x)
+    {
+        Debug.Log("call of InstanceMethodTest.FuncReplace");
+        x += 1;
+        a.val = 7;
+
+        // 可以调用原方法或者不调用
+        if (x < 100)
+        {
+            int ret = 0;
+            _hook.RunWithoutPatch(()=> ret = a.Func(x));
+            return ret;
+        }
+        else
+            return x + 1;
+    }
 
     public string Test()
     {
-        Type typeA = typeof(A);
-        Type typeB = typeof(B);
+        MethodInfo miAFunc = typeof(A).GetMethod("Func");
+        MethodInfo miBReplace = typeof(InstanceMethodTest).GetMethod("FuncReplace", BindingFlags.Static | BindingFlags.Public);
 
-        MethodInfo miAFunc = typeA.GetMethod("Func");
-        MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
-        MethodInfo miBProxy = typeB.GetMethod("FuncProxy");
-
-        MethodHook hooker = new MethodHook(miAFunc, miBReplace, miBProxy);
-        hooker.Install();
+        _hook = new MethodHook(miAFunc, miBReplace);
+        _hook.Install();
 
         // 调用原始A的方法测试
         A a = new A() { val = 5 };
