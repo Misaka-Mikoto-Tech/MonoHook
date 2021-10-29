@@ -18,7 +18,6 @@ public class A
     [MethodImpl(MethodImplOptions.NoInlining)] // without this will hook fail at il2cpp release mode
     public int Func(int x)
     {
-        Debug.Log("call of A.Func");
         return x + val;
     }
 }
@@ -29,29 +28,58 @@ public class A
 public class InstanceMethodTest
 {
     static MethodHook _hook;
-    public static bool noPatch = false;
+    public static bool s_callOriFunc = true;
 
+    class InnerData
+    {
+        public int x;
+        public A a;
+        public int ret;
+        public Action action;
+
+        public InnerData()
+        {
+            action = Call;
+        }
+
+        public void Call()
+        {
+             ret = a.Func(x);
+        }
+    }
+
+    static InnerData s_innerData = new InnerData();
     public static int FuncReplace(A a, int x)
     {
-        Debug.Log("call of InstanceMethodTest.FuncReplace");
+        //Debug.Log("call of InstanceMethodTest.FuncReplace");
         x += 1;
         a.val = 7;
 
-        // 可以调用原方法或者不调用
-        if (x < 100)
+        if (s_callOriFunc)
         {
-            if (noPatch)
-                return x + a.val;
-
-            int ret = 0;
-            _hook.RunWithoutPatch(()=> ret = a.Func(x));
-            return ret;
+            s_innerData.x = x;
+            s_innerData.a = a;
+            _hook.RunWithoutPatch(s_innerData.action);
+            return s_innerData.ret;
         }
         else
-            return x + 1;
+            return x + a.val;
     }
 
-    static InstanceMethodTest()
+    private static int CallAFunc(A a, int x)
+    {
+        return a.Func(x);
+    }
+
+    static int s_initVal = 2;
+
+    public void Reset()
+    {
+        s_initVal = 2;
+        s_callOriFunc = true;
+    }
+
+    public static void InstallPatch()
     {
         MethodInfo miAFunc = typeof(A).GetMethod("Func");
         MethodInfo miBReplace = typeof(InstanceMethodTest).GetMethod("FuncReplace", BindingFlags.Static | BindingFlags.Public);
@@ -60,16 +88,17 @@ public class InstanceMethodTest
         _hook.Install();
     }
 
-    static int s_initVal = 2;
-    public string Test()
+    public static void UnInstallPatch()
+    {
+        _hook.Uninstall();
+    }
+
+    public int Test()
     {
         // 调用原始A的方法测试
         A a = new A() { val = 5 };
         int ret = a.Func(s_initVal++);
-        string info = string.Format("ret:{0}", ret);
-        //Debug.Log(info);
-        //Debug.Assert(ret == 10);
-        return info;
+        return ret;
     }
     
 

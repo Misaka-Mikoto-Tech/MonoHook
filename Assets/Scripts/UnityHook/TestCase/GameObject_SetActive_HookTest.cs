@@ -35,10 +35,22 @@ public static class GameObject_SetActive_HookTest
         }
     }
 
+
+    public static void Test(GameObject go)
+    {
+        go.SetActive(false);
+        Debug.Assert(s_GoValue == 0);
+        go.SetActive(true);
+        Debug.Assert(s_GoValue == 1);
+        s_GoValue = -1;
+    }
+
+    static int s_GoValue = -1;
     private static void SetActiveNew(GameObject go, bool value)
     {
         _hook.RunWithoutPatch(()=> go.SetActive(value));
         Debug.LogFormat("GameObject [{0}] SetActive({1})", go.name, value);
+        s_GoValue = value ? 1 : 0;
     }
 }
 #endif
