@@ -27,6 +27,10 @@ public static class IL2CPPHelper
 #endif
     }
 
+    public static void FlushICache(IntPtr ptr, int size)
+    {
+    }
+
 #if UNITY_STANDALONE_WIN
     [Flags]
     public enum Protection

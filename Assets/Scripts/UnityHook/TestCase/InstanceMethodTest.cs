@@ -29,6 +29,7 @@ public class A
 public class InstanceMethodTest
 {
     static MethodHook _hook;
+    public static bool noPatch = false;
 
     public static int FuncReplace(A a, int x)
     {
@@ -39,6 +40,9 @@ public class InstanceMethodTest
         // 可以调用原方法或者不调用
         if (x < 100)
         {
+            if (noPatch)
+                return x + a.val;
+
             int ret = 0;
             _hook.RunWithoutPatch(()=> ret = a.Func(x));
             return ret;
@@ -47,20 +51,24 @@ public class InstanceMethodTest
             return x + 1;
     }
 
-    public string Test()
+    static InstanceMethodTest()
     {
         MethodInfo miAFunc = typeof(A).GetMethod("Func");
         MethodInfo miBReplace = typeof(InstanceMethodTest).GetMethod("FuncReplace", BindingFlags.Static | BindingFlags.Public);
 
         _hook = new MethodHook(miAFunc, miBReplace);
         _hook.Install();
+    }
 
+    static int s_initVal = 2;
+    public string Test()
+    {
         // 调用原始A的方法测试
         A a = new A() { val = 5 };
-        int ret = a.Func(2);
+        int ret = a.Func(s_initVal++);
         string info = string.Format("ret:{0}", ret);
-        Debug.Log(info);
-        Debug.Assert(ret == 10);
+        //Debug.Log(info);
+        //Debug.Assert(ret == 10);
         return info;
     }
     

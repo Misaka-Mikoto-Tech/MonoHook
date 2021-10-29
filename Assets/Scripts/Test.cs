@@ -34,16 +34,32 @@ public class Test : MonoBehaviour
 
     public void OnBtnTestClick()
     {
-        PinnedLog.ClearAll();
-
-        Debug.Log("普通日志");
-        Debug.LogError("普通错误");
-
-        _msgId = PinnedLog.AddMsg("我是不会被清掉的日志");
+        Debug.Log("Test Begin");
 
         // 实例方法替换测试
-        InstanceMethodTest InstanceTest = new InstanceMethodTest();
-        txtTestVal.text = $"InstanceTest: {InstanceTest.Test()}";
+        {
+            InstanceMethodTest InstanceTest = new InstanceMethodTest();
+            InstanceTest.Test();
+
+            int count = 2000;
+            string str = $"InstanceMethodTest {count} times\r\n";
+            DateTime dt = DateTime.Now;
+            for (int i = 0; i < count; i++)
+            {
+                InstanceTest.Test();
+            }
+            str += $"patch:      {(int)new TimeSpan(DateTime.Now.Ticks - dt.Ticks).TotalMilliseconds} ms\r\n";
+
+            dt = DateTime.Now;
+            InstanceMethodTest.noPatch = true;
+            for (int i = 0; i < count; i++)
+            {
+                InstanceTest.Test();
+            }
+            str += $"no patch: {(int)new TimeSpan(DateTime.Now.Ticks - dt.Ticks).TotalMilliseconds} ms";
+            txtTestVal.text = str;
+        }
+
 
         // 属性替换测试
         PropertyHookTest propTest = new PropertyHookTest();
@@ -57,13 +73,12 @@ public class Test : MonoBehaviour
         CtorHookTest ctorHookTest = new CtorHookTest();
         ctorHookTest.Test();
 
-        //// 测试GameObject.SetActive
+        // 测试GameObject.SetActive
         GameObject_SetActive_HookTest.Init();
         btn.gameObject.SetActive(false);
         btn.gameObject.SetActive(true);
 
-        PinnedLog.RemoveMsg(_msgId);
-        PinnedLog.ClearAll();
+        Debug.Log("Test End");
     }
 #endif
     #endregion

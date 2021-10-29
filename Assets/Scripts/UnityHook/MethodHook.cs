@@ -9,6 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Unity.Collections.LowLevel.Unsafe;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -96,7 +97,7 @@ public unsafe class MethodHook
         0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
         0x00, 0x00, 0x00, 0x00,                             // $val
     }, 4);
-    private static readonly JmpCode s_jmpCode_arm64 = new JmpCode(new byte[] //source https://github.com/MonoMod/MonoMod.Common
+    private static readonly JmpCode s_jmpCode_arm64 = new JmpCode(new byte[] // 16 bytes, source https://github.com/MonoMod/MonoMod.Common
     {
         0x4F, 0x00, 0x00, 0x58,                         // LDR X15, .+8
         0xE0, 0x01, 0x1F, 0xD6,                         // BR X15
@@ -190,7 +191,7 @@ public unsafe class MethodHook
             throw new Exception("can not call RunWithoutPatch before hook installed");
 
         RemovePatch();
-        
+
         try
         {
             action();
@@ -283,33 +284,47 @@ public unsafe class MethodHook
     {
         byte* pTarget = (byte*)_targetPtr.ToPointer();
 
-        if (isHooked)
+        try
         {
-            fixed(void * p = &_hookedBufferBackup[0])
+            if (isHooked)
             {
-                byte* pHookedBufferBackup = (byte*)p;
-                for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
-                    *pTarget++ = *pHookedBufferBackup++;
+                fixed (void* p = &_hookedBufferBackup[0])
+                {
+                    byte* pHookedBufferBackup = (byte*)p;
+                    for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
+                        *pTarget++ = *pHookedBufferBackup++;
+                }
+
+                return;
             }
-            
-            return;
+
+            byte* pTargetBackup = pTarget;
+            byte* pAddr = pTarget + s_jmpCode.addrOffset;
+
+            EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
+
+            for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
+                *pTarget++ = s_jmpCode.code[i];
+
+            if (IntPtr.Size == 4)
+                *(uint*)pAddr = (uint)_replacementPtr.ToInt32();
+            else
+                *(ulong*)pAddr = (ulong)_replacementPtr.ToInt64();
+
+            for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
+                _hookedBufferBackup[i] = *pTargetBackup++;
         }
-
-        byte* pTargetBackup = pTarget;
-        byte* pAddr = pTarget + s_jmpCode.addrOffset;
-
-        EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
-
-        for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
-            *pTarget++ = s_jmpCode.code[i];
-
-        if (IntPtr.Size == 4)
-            *(uint*)pAddr = (uint)_replacementPtr.ToInt32();
-        else
-            *(ulong*)pAddr = (ulong)_replacementPtr.ToInt64();
-
-        for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
-            _hookedBufferBackup[i] = *pTargetBackup++;
+        finally
+        {
+#if UNITY_ANDROID
+            /*
+             * I see that the kernel does indeed flush caches on mprotect
+             * will crash without this on Arm32/64
+             */
+            EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
+            Thread.Sleep(1);
+#endif
+        }
     }
 
     private void RemovePatch()
@@ -322,6 +337,15 @@ public unsafe class MethodHook
             for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
                 *pTarget++ = *pTargetHeaderBackup++;
         }
+
+#if UNITY_ANDROID
+        /*
+        * I see that the kernel does indeed flush caches on mprotect
+        * will crash without this on Arm32/64
+        */
+        EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
+        Thread.Sleep(1);
+#endif
     }
 
     private void EnableAddrModifiable(IntPtr ptr, int size)
