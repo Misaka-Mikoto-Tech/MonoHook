@@ -85,14 +85,12 @@ public unsafe class MethodHook
 
     private static readonly JmpCode s_jmpCode_x86 = new JmpCode(new byte[] // 6 bytes
     {
-        0x68, 0x00, 0x00, 0x00, 0x00,                       // push $val
-        0xC3                                                // ret
+        0xE9, 0x00, 0x00, 0x00, 0x00,                 // jmp $val   ;$val = $dst - $src - 5 
     }, 1);
     private static readonly JmpCode s_jmpCode_x64 = new JmpCode(new byte[] // 14 bytes
     {
-        0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,                 // jmp [rip]
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // $val
-    }, 6);
+        0xE9, 0x00, 0x00, 0x00, 0x00,                 // jmp $val   ;$val = $dst - $src - 5 
+    }, 1);
     private static readonly JmpCode s_jmpCode_arm32_arm = new JmpCode(new byte[] // 8 bytes
     {
         0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
@@ -100,12 +98,15 @@ public unsafe class MethodHook
     }, 4);
     private static readonly JmpCode s_jmpCode_arm64 = new JmpCode(new byte[] //source https://github.com/MonoMod/MonoMod.Common
     {
-        0x4F, 0x00, 0x00, 0x58,                         // LDR X15, .+8
-        0xE0, 0x01, 0x1F, 0xD6,                         // BR X15
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // $val
-    }, 8);
+        /*
+         * from 0x14 to 0x17 is B opcode
+         * offset bits is 26
+         * https://developer.arm.com/documentation/ddi0596/2021-09/Base-Instructions/B--Branch-
+         */
+        0x00, 0x00, 0x00, 0x14,                             //  B $val   ;$val = (($dst - $src)/4) & (1 << 26)
+    }, 0);
 
-    // arm thumb arch support has removed
+    // arm thumb arch support has removed (unity will always gen arm32/arm64 code)
 
     #endregion
 
