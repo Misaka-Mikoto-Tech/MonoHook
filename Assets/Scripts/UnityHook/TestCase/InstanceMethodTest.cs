@@ -7,7 +7,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 
 
@@ -15,10 +14,34 @@ public class A
 {
     public int val;
 
-    [MethodImpl(MethodImplOptions.NoInlining)] // without this will hook fail at il2cpp release mode
     public int Func(int x)
     {
+        Debug.Log("call of A.Func");
         return x + val;
+    }
+}
+
+public class B
+{
+    public int FuncReplace(int x)
+    {
+        object obj = this;
+        A a = obj as A;
+        Debug.Log("call of B.Func");
+        x += 1;
+        a.val = 7;
+
+        // 可以调用原方法或者不调用
+        if (x < 100)
+            return FuncProxy(x);
+        else
+            return x + 1;
+    }
+
+    public int FuncProxy(int x)
+    {
+        Debug.Log("随便乱写");
+        return x;
     }
 }
 
@@ -27,77 +50,26 @@ public class A
 /// </summary>
 public class InstanceMethodTest
 {
-    static MethodHook _hook;
-    public static bool s_callOriFunc = true;
-
-    class InnerData
-    {
-        public int x;
-        public A a;
-        public int ret;
-        public Action action;
-
-        public InnerData()
-        {
-            action = Call;
-        }
-
-        public void Call()
-        {
-             ret = a.Func(x);
-        }
-    }
-
-    static InnerData s_innerData = new InnerData();
-    public static int FuncReplace(A a, int x)
-    {
-        //Debug.Log("call of InstanceMethodTest.FuncReplace");
-        x += 1;
-        a.val = 7;
-
-        if (s_callOriFunc)
-        {
-            s_innerData.x = x;
-            s_innerData.a = a;
-            _hook.RunWithoutPatch(s_innerData.action);
-            return s_innerData.ret;
-        }
-        else
-            return x + a.val;
-    }
-
-    private static int CallAFunc(A a, int x)
-    {
-        return a.Func(x);
-    }
-
-    static int s_initVal = 2;
-
-    public void Reset()
-    {
-        s_initVal = 2;
-        s_callOriFunc = true;
-    }
-
-    public static void InstallPatch()
-    {
-        MethodInfo miAFunc = typeof(A).GetMethod("Func");
-        MethodInfo miBReplace = typeof(InstanceMethodTest).GetMethod("FuncReplace", BindingFlags.Static | BindingFlags.Public);
-
-        _hook = new MethodHook(miAFunc, miBReplace);
-        _hook.Install();
-    }
-
-    public static void UnInstallPatch()
-    {
-        _hook.Uninstall();
-    }
+    public static bool callOriFunc;
+    public static void InstallPatch() { }
+    public static void UninstallPatch() { }
+    public void Reset() { }
 
     public int Test()
     {
+        Type typeA = typeof(A);
+        Type typeB = typeof(B);
+
+        MethodInfo miAFunc = typeA.GetMethod("Func");
+        MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
+        MethodInfo miBProxy = typeB.GetMethod("FuncProxy");
+
+        MethodHook hooker = new MethodHook(miAFunc, miBReplace, miBProxy);
+        hooker.Install();
+
         // 调用原始A的方法测试
         A a = new A() { val = 5 };
-        int ret = a.Func(s_initVal++);
+        int ret = a.Func(2);
         return ret;
     }
     

@@ -24,12 +24,11 @@ using UnityEditor.Callbacks;
 public static class PinnedLog
 {
     private static Dictionary<int, string> _msgs = new Dictionary<int, string>(); // 点击编辑器运行按钮时会被Unity清空
-    private static MethodHook _hook;
-    private static MethodInfo _methodClearLog;
+    private static MethodHook _hooker;
 
     static PinnedLog()
     {
-        if(_hook == null)
+        if(_hooker == null)
         {
 #if UNITY_2017_1_OR_NEWER
             Type type = Type.GetType("UnityEditor.LogEntries,UnityEditor.dll");
@@ -37,13 +36,14 @@ public static class PinnedLog
             Type type = Type.GetType("UnityEditorInternal.LogEntries,UnityEditor.dll");
 
 #endif
-            _methodClearLog = type.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo miTarget = type.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
 
             type = typeof(PinnedLog);
             MethodInfo miReplacement = type.GetMethod("NewClearLog", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miProxy = type.GetMethod("ProxyClearLog", BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hook = new MethodHook(_methodClearLog, miReplacement);
-            _hook.Install();
+            _hooker = new MethodHook(miTarget, miReplacement, miProxy);
+            _hooker.Install();
         }
     }
 
@@ -64,15 +64,27 @@ public static class PinnedLog
     public static void ClearAll()
     {
         _msgs.Clear();
-        _hook.RunWithoutPatch(null, null);
+        ProxyClearLog();
     }
 
     #region private
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void NewClearLog()
     {
-        _hook.RunWithoutPatch(null, null);
+        ProxyClearLog();
         foreach (var item in _msgs)
             UnityEngine.Debug.LogError(item.Value);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ProxyClearLog()
+    {
+        // 随便乱写点东西以占据空间
+        for (int i = 0; i < 100; i++)
+        {
+            UnityEngine.Debug.Log("something");
+        }
+        UnityEngine.Debug.Log(Application.targetFrameRate);
     }
     #endregion
 }

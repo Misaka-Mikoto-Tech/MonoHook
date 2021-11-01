@@ -9,7 +9,6 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Threading;
 using Unity.Collections.LowLevel.Unsafe;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -66,9 +65,11 @@ public unsafe class MethodHook
 
     private MethodBase  _targetMethod;       // 需要被hook的目标方法
     private MethodBase  _replacementMethod;  // 被hook后的替代方法
+    private MethodBase  _proxyMethod;        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
 
     private IntPtr      _targetPtr;          // 目标方法被 jit 后的地址指针
     private IntPtr      _replacementPtr;
+    private IntPtr      _proxyPtr;
 
     private struct JmpCode
     {
@@ -97,7 +98,7 @@ public unsafe class MethodHook
         0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
         0x00, 0x00, 0x00, 0x00,                             // $val
     }, 4);
-    private static readonly JmpCode s_jmpCode_arm64 = new JmpCode(new byte[] // 16 bytes, source https://github.com/MonoMod/MonoMod.Common
+    private static readonly JmpCode s_jmpCode_arm64 = new JmpCode(new byte[] //source https://github.com/MonoMod/MonoMod.Common
     {
         0x4F, 0x00, 0x00, 0x58,                         // LDR X15, .+8
         0xE0, 0x01, 0x1F, 0xD6,                         // BR X15
@@ -110,8 +111,7 @@ public unsafe class MethodHook
 
     private static readonly JmpCode s_jmpCode;
 
-    private byte[]                  _targetHeaderBackup; // backup original code
-    private byte[]                  _hookedBufferBackup; // backup code modified
+    private byte[]                  _targetHeaderBackup;
 
 #if UNITY_EDITOR
     /// <summary>
@@ -140,10 +140,12 @@ public unsafe class MethodHook
     /// </summary>
     /// <param name="targetMethod">需要替换的目标方法</param>
     /// <param name="replacementMethod">准备好的替换方法</param>
-    public MethodHook(MethodBase targetMethod, MethodBase replacementMethod)
+    /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
+    public MethodHook(MethodBase targetMethod, MethodBase replacementMethod, MethodBase proxyMethod = null)
     {
         _targetMethod       = targetMethod;
         _replacementMethod  = replacementMethod;
+        _proxyMethod        = proxyMethod;
     }
 
     public void Install()
@@ -180,57 +182,6 @@ public unsafe class MethodHook
         HookPool.RemoveHooker(_targetMethod);
     }
 
-    /// <summary>
-    /// 在没有Patch的环境中执行代码(多线程有风险)
-    /// </summary>
-    /// <param name="action"></param>
-    /// <exception cref="Exception"></exception>
-    public void RunWithoutPatch(Action action)
-    {
-        if(!isHooked)
-            throw new Exception("can not call RunWithoutPatch before hook installed");
-
-        RemovePatch();
-
-        try
-        {
-            action();
-        }
-        catch(Exception ex)
-        {
-            UnityEngine.Debug.LogError($"RunWithoutPatch Error: {ex.Message}");
-        }
-
-        PatchTargetMethod();
-    }
-
-    /// <summary>
-    /// 在没有Patch的环境中执行代码
-    /// </summary>
-    /// <param name="obj"></param>
-    /// <param name="args"></param>
-    /// <exception cref="Exception"></exception>
-    public object RunWithoutPatch(object obj, params object[] args)
-    {
-        if (!isHooked)
-            throw new Exception("can not call RunWithoutPatch before hook installed");
-
-        RemovePatch();
-
-        object ret = null;
-        try
-        {
-            ret = _targetMethod.Invoke(obj, args);
-        }
-        catch (Exception ex)
-        {
-            UnityEngine.Debug.LogError($"RunWithoutPatch Error: {ex.Message}");
-        }
-
-        PatchTargetMethod();
-        return ret;
-    }
-
     #region private
     private void DoInstall()
     {
@@ -240,6 +191,7 @@ public unsafe class MethodHook
         {
             BackupHeader();
             PatchTargetMethod();
+            PatchProxyMethod();
         }
         
         isHooked = true;
@@ -252,8 +204,10 @@ public unsafe class MethodHook
     {
         _targetPtr = GetFunctionAddr(_targetMethod);
         _replacementPtr = GetFunctionAddr(_replacementMethod);
+        if (_proxyMethod != null)
+            _proxyPtr = GetFunctionAddr(_proxyMethod);
 
-        if (_targetPtr == IntPtr.Zero || _replacementPtr == IntPtr.Zero)
+        if (_targetPtr == IntPtr.Zero || _proxyPtr == IntPtr.Zero)
             return false;
 
         if(LDasm.IsThumb(_targetPtr) || LDasm.IsThumb(_replacementPtr))
@@ -273,7 +227,6 @@ public unsafe class MethodHook
 
         uint requireSize = LDasm.SizeofMinNumByte(pTarget, s_jmpCode.codeSize);
         _targetHeaderBackup = new byte[requireSize];
-        _hookedBufferBackup = new byte[requireSize];
 
         for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
             _targetHeaderBackup[i] = *pTarget++;
@@ -282,70 +235,43 @@ public unsafe class MethodHook
     // 将原始方法跳转到我们的方法
     private void PatchTargetMethod()
     {
+        EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
+
         byte* pTarget = (byte*)_targetPtr.ToPointer();
+        byte* pAddr = pTarget + s_jmpCode.addrOffset;
 
-        try
-        {
-            if (isHooked)
-            {
-                fixed (void* p = &_hookedBufferBackup[0])
-                {
-                    byte* pHookedBufferBackup = (byte*)p;
-                    for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
-                        *pTarget++ = *pHookedBufferBackup++;
-                }
+        for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
+            *pTarget++ = s_jmpCode.code[i];
 
-                return;
-            }
-
-            byte* pTargetBackup = pTarget;
-            byte* pAddr = pTarget + s_jmpCode.addrOffset;
-
-            EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
-
-            for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
-                *pTarget++ = s_jmpCode.code[i];
-
-            if (IntPtr.Size == 4)
-                *(uint*)pAddr = (uint)_replacementPtr.ToInt32();
-            else
-                *(ulong*)pAddr = (ulong)_replacementPtr.ToInt64();
-
-            for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
-                _hookedBufferBackup[i] = *pTargetBackup++;
-        }
-        finally
-        {
-#if UNITY_ANDROID
-            /*
-             * I see that the kernel does indeed flush caches on mprotect
-             * will crash without this on Arm32/64
-             */
-            EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
-            Thread.Sleep(1);
-#endif
-        }
+        if (IntPtr.Size == 4)
+            *(uint*)pAddr = (uint)_replacementPtr.ToInt32();
+        else
+            *(ulong*)pAddr = (ulong)_replacementPtr.ToInt64();
     }
 
-    private void RemovePatch()
+    /// <summary>
+    /// 让 Proxy 方法的功能变成跳转向原始方法
+    /// </summary>
+    private void PatchProxyMethod()
     {
-        byte* pTarget = (byte*)_targetPtr.ToPointer();
+        EnableAddrModifiable(_proxyPtr, _targetHeaderBackup.Length + s_jmpCode.codeSize);
 
-        fixed (void* p = &_targetHeaderBackup[0])
-        {
-            byte* pTargetHeaderBackup = (byte*)p;
-            for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
-                *pTarget++ = *pTargetHeaderBackup++;
-        }
+        byte * pProxy = (byte*)_proxyPtr.ToPointer();
 
-#if UNITY_ANDROID
-        /*
-        * I see that the kernel does indeed flush caches on mprotect
-        * will crash without this on Arm32/64
-        */
-        EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
-        Thread.Sleep(1);
-#endif
+        // fill backuped original target header code
+        for (int i = 0; i < _targetHeaderBackup.Length; i++)
+            *pProxy++ = _targetHeaderBackup[i];
+
+        // fill jump code
+        byte* pAddr = pProxy + s_jmpCode.addrOffset;
+        for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
+            *pProxy++ = s_jmpCode.code[i];
+
+        // fill jmp addr value(to target method)
+        if (IntPtr.Size == 4)
+            *(uint*)pAddr = (uint)_targetPtr.ToInt32() + (uint)_targetHeaderBackup.Length;
+        else
+            *(ulong*)pAddr = (ulong)_targetPtr.ToInt64() + (ulong)_targetHeaderBackup.Length;
     }
 
     private void EnableAddrModifiable(IntPtr ptr, int size)

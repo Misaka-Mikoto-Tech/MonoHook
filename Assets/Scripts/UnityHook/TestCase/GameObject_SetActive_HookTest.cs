@@ -19,6 +19,11 @@ public static class GameObject_SetActive_HookTest
         Init();
     }
 
+    public static void Test(GameObject go)
+    {
+
+    }
+
     public static void Init()
     {
         if (_hook == null)
@@ -29,28 +34,22 @@ public static class GameObject_SetActive_HookTest
 
             type = typeof(GameObject_SetActive_HookTest);
             MethodInfo miReplacement = type.GetMethod("SetActiveNew", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miProxy = type.GetMethod("SetActiveProxy", BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hook = new MethodHook(miTarget, miReplacement);
+            _hook = new MethodHook(miTarget, miReplacement, miProxy);
             _hook.Install();
         }
     }
 
-
-    public static void Test(GameObject go)
-    {
-        go.SetActive(false);
-        Debug.Assert(s_GoValue == 0);
-        go.SetActive(true);
-        Debug.Assert(s_GoValue == 1);
-        s_GoValue = -1;
-    }
-
-    static int s_GoValue = -1;
     private static void SetActiveNew(GameObject go, bool value)
     {
-        _hook.RunWithoutPatch(()=> go.SetActive(value));
+        SetActiveProxy(go, value);
         Debug.LogFormat("GameObject [{0}] SetActive({1})", go.name, value);
-        s_GoValue = value ? 1 : 0;
+    }
+
+    private static void SetActiveProxy(GameObject go, bool value)
+    {
+        // dummy
     }
 }
 #endif
