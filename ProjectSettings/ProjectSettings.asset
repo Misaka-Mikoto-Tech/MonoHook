@@ -246,7 +246,7 @@ PlayerSettings:
   useCustomBaseGradleTemplate: 0
   useCustomGradlePropertiesTemplate: 0
   useCustomProguardFile: 0
-  AndroidTargetArchitectures: 2
+  AndroidTargetArchitectures: 1
   AndroidTargetDevices: 0
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
@@ -690,7 +690,7 @@ PlayerSettings:
   webGLThreadsSupport: 0
   webGLDecompressionFallback: 0
   scriptingDefineSymbols:
-    1: UNITY_POST_PROCESSING_STACK_V2;ENABLE_HOOK_TEST_CASE
+    1: UNITY_POST_PROCESSING_STACK_V2;ENABLE_HOOK_TEST_CASE;ENABLE_HOOK_DEBUG
     4: UNITY_POST_PROCESSING_STACK_V2
     7: UNITY_POST_PROCESSING_STACK_V2;ENABLE_HOOK_TEST_CASE;ENABLE_HOOK_DEBUG
     13: UNITY_POST_PROCESSING_STACK_V2

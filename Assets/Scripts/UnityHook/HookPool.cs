@@ -30,7 +30,7 @@ public static class HookPool
         return null;
     }
 
-    public static void RemoveHook(MethodBase method)
+    public static void RemoveHooker(MethodBase method)
     {
         _hooks.Remove(method);
     }

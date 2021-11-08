@@ -57,7 +57,6 @@ public unsafe abstract class CodePatcher
     {
         HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
         FlushJmpCode(_pTarget, _pReplace);
-        HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
     }
     protected void PatchProxyMethod()
     {
@@ -72,9 +71,18 @@ public unsafe abstract class CodePatcher
         long jmpTo = (long)_pTarget + _targetHeaderBackup.Length;
 
         FlushJmpCode((void*)jmpFrom, (void *)jmpTo);
-        HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
     }
     protected abstract void FlushJmpCode(void* jmpFrom, void* jmpTo);
+
+#if ENABLE_HOOK_DEBUG
+    protected string PrintAddrs()
+    {
+        if (IntPtr.Size == 4)
+            return $"target:0x{(uint)_pTarget:x}, replace:0x{(uint)_pReplace:x}, proxy:0x{(uint)_pProxy:x}";
+        else
+            return $"target:0x{(ulong)_pTarget:x}, replace:0x{(ulong)_pReplace:x}, proxy:0x{(ulong)_pProxy:x}";
+    }
+#endif
 
     private void EnableAddrModifiable()
     {
@@ -97,7 +105,7 @@ public unsafe class CodePatcher_x86 : CodePatcher
 
     protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
     {
-        long val = (long)jmpTo - (long)jmpFrom - 5;
+        int val = (int)jmpTo - (int)jmpFrom - 5;
 
         byte* ptr = (byte*)jmpFrom;
         *ptr = 0xE9;
@@ -122,11 +130,15 @@ public unsafe class CodePatcher_arm32_near : CodePatcher
     {
         if (Math.Abs((long)target - (long)replace) >= ((1 << 25) - 1))
             throw new ArgumentException("address offset of target and replace must less than ((1 << 25) - 1)");
+
+#if ENABLE_HOOK_DEBUG
+        Debug.Log($"CodePatcher_arm32_near: { PrintAddrs() }");
+#endif
     }
 
     protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
     {
-        long val = ((long)jmpTo - (long)jmpFrom) / 4 - 2;
+        int val = ((int)jmpTo - (int)jmpFrom) / 4 - 2;
 
         byte* ptr = (byte*)jmpFrom;
         *ptr++ = (byte)val;
@@ -148,15 +160,17 @@ public unsafe class CodePatcher_arm32_far : CodePatcher
     {
         if (Math.Abs((long)target - (long)replace) < ((1 << 25) - 1))
             throw new ArgumentException("address offset of target and replace must larger than ((1 << 25) - 1), please use InstructionModifier_arm32_near instead");
+
+#if ENABLE_HOOK_DEBUG
+        Debug.Log($"CodePatcher_arm32_far: { PrintAddrs() }");
+#endif
     }
 
     protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
     {
-        long val = (long)jmpTo - (long)jmpFrom;
-
         uint* ptr = (uint*)jmpFrom;
         *ptr++ = 0xE51FF004;
-        *ptr = (uint)val;
+        *ptr = (uint)jmpTo;
     }
 }
 
@@ -176,6 +190,10 @@ public unsafe class CodePatcher_arm64 : CodePatcher
     {
         if (Math.Abs((long)target - (long)replace) >= ((1 << 27) - 1))
             throw new ArgumentException("address offset of target and replace must less than (1 << 27) - 1)");
+
+#if ENABLE_HOOK_DEBUG
+        Debug.Log($"CodePatcher_arm64: { PrintAddrs() }");
+#endif
     }
 
     protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)

@@ -25,38 +25,6 @@ public static unsafe class HookUtils
             *pDst_++ = *pSrc_++;
     }
 
-    const int PRINT_SPLIT = 4;
-    const int PRINT_COL_SIZE = PRINT_SPLIT * 4;
-    public static string HexToString(void* ptr, int size, int offset = 0)
-    {
-        byte* addr = (byte*)ptr;
-        
-        StringBuilder sb = new StringBuilder(1024);
-        sb.AppendLine($"addr:0x{(long)addr:x}");
-        
-        addr += offset;
-        size += Math.Abs(offset);
-
-        int count = 0;
-        while(true)
-        {
-            sb.Append($"\r\n0x{(long)(addr + count):x}: ");
-            for(int i = 1;i < PRINT_COL_SIZE + 1; i++)
-            {
-                if (count >= size)
-                    goto END;
-
-                sb.Append($"{*(addr + count):x2}");
-                if (i % PRINT_SPLIT == 0)
-                    sb.Append(" ");
-
-                count++;
-            }
-        }
-    END:;
-        return sb.ToString();
-    }
-
     /// <summary>
     /// set flags of address to `read write execute`
     /// </summary>
@@ -84,7 +52,7 @@ public static unsafe class HookUtils
 #endif
     }
 
-    static KeyValuePair<long, long> GetPageAlignedAddr(long code, int size)
+    public static KeyValuePair<long, long> GetPageAlignedAddr(long code, int size)
     {
         long pagesize = _Pagesize;
         long startPage = (code) & ~(pagesize - 1);
@@ -93,6 +61,39 @@ public static unsafe class HookUtils
     }
 
 
+    const int PRINT_SPLIT = 4;
+    const int PRINT_COL_SIZE = PRINT_SPLIT * 4;
+    public static string HexToString(void* ptr, int size, int offset = 0)
+    {
+        Func<IntPtr, string> formatAddr = (IntPtr addr) => IntPtr.Size == 4 ? $"0x{(uint)addr:x}" : $"0x{(ulong)addr:x}";
+
+        byte* addr = (byte*)ptr;
+
+        StringBuilder sb = new StringBuilder(1024);
+        sb.AppendLine($"addr:{formatAddr(new IntPtr(addr))}");
+
+        addr += offset;
+        size += Math.Abs(offset);
+
+        int count = 0;
+        while (true)
+        {
+            sb.Append($"\r\n{ formatAddr(new IntPtr(addr + count))}: ");
+            for (int i = 1; i < PRINT_COL_SIZE + 1; i++)
+            {
+                if (count >= size)
+                    goto END;
+
+                sb.Append($"{*(addr + count):x2}");
+                if (i % PRINT_SPLIT == 0)
+                    sb.Append(" ");
+
+                count++;
+            }
+        }
+    END:;
+        return sb.ToString();
+    }
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR
     [Flags]
@@ -182,10 +183,19 @@ public static unsafe class HookUtils
         0x04, 0x10, 0x9D, 0xE5,                             // LDR             R1, [SP,#8+var_4]
         0x00, 0x20, 0x9D, 0xE5,                             // LDR             R2, [SP,#8+var_8]
         0x02, 0x10, 0x81, 0xE0,                             // ADD             R1, R1, R2
-        0x98, 0xFF, 0xFF, 0xEB,                             // BL              j___clear_cache
+        0x01, 0x00, 0x00, 0xEB,                             // BL              __clear_cache
         0x0B, 0xD0, 0xA0, 0xE1,                             // MOV             SP, R11
-        0x00, 0x88, 0xBD, 0xE8
+        0x00, 0x88, 0xBD, 0xE8,                             // POP             {R11,PC}
+
+        //                         __clear_cache                           ; CODE XREF: j___clear_cache+8↑j
+        0x80, 0x00, 0x2D, 0xE9,                             // PUSH            { R7 }
+        0x02, 0x70, 0x00, 0xE3, 0x0F, 0x70, 0x40, 0xE3,     // MOV             R7, #0xF0002
+        0x00, 0x20, 0xA0, 0xE3,                             // MOV             R2, #0
+        0x00, 0x00, 0x00, 0xEF,                             // SVC             0
+        0x80, 0x00, 0xBD, 0xE8,                             // POP             {R7}
+        0x1E, 0xFF, 0x2F, 0xE1,                             // BX              LR
     };
+
     private static byte[] s_flush_icache_arm64 = new byte[] // X0: code, W1: size
     {
         // void cdecl mono_arch_flush_icache (guint8 *code, gint size)

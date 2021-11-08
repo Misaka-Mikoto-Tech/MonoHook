@@ -135,7 +135,7 @@ public unsafe class MethodHook
         _codePatcher.RemovePatch();
 
         isHooked = false;
-        HookPool.RemoveHook(_targetMethod);
+        HookPool.RemoveHooker(_targetMethod);
     }
 
     #region private
