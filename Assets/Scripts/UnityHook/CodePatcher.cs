@@ -57,6 +57,7 @@ public unsafe abstract class CodePatcher
     {
         HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
         FlushJmpCode(_pTarget, _pReplace);
+        HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
     }
     protected void PatchProxyMethod()
     {
@@ -71,6 +72,7 @@ public unsafe abstract class CodePatcher
         long jmpTo = (long)_pTarget + _targetHeaderBackup.Length;
 
         FlushJmpCode((void*)jmpFrom, (void *)jmpTo);
+        HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
     }
     protected abstract void FlushJmpCode(void* jmpFrom, void* jmpTo);
 

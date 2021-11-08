@@ -6,14 +6,15 @@ using UnityEngine;
 using UnityEditor;
 using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 //[InitializeOnLoad]
 public class SceneHierarchyStageHandling_HookTest
 {
-    private static MethodHook _hooker;
+    private static MethodHook _hook;
     static SceneHierarchyStageHandling_HookTest()
     {
-        if (_hooker == null)
+        if (_hook == null)
         {
             Type type = Type.GetType("UnityEditor.SceneHierarchyStageHandling,UnityEditor.dll");
 #if UNITY_2021_2_OR_NEWER
@@ -26,8 +27,8 @@ public class SceneHierarchyStageHandling_HookTest
             var old = typeof(SceneHierarchyStageHandling_HookTest).GetMethod("PrefabStageHeaderGUIOld",
                 BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hooker = new MethodHook(target, dst, old);
-            _hooker.Install();
+            _hook = new MethodHook(target, dst, old);
+            _hook.Install();
         }
     }
     static void PrefabStageHeaderGUINew(object handle, Rect rect)
@@ -36,6 +37,8 @@ public class SceneHierarchyStageHandling_HookTest
         GUILayout.Button("^wow^");
         // GUI.Button(new Rect(rect.xMax - 100, rect.y, 16, rect.height), "x");
     }
+
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     static void PrefabStageHeaderGUIOld(object handle, Rect rect)
     {
         // 随便乱写点东西以占据空间

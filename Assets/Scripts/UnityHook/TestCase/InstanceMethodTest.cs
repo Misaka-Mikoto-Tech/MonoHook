@@ -16,7 +16,7 @@ public class A
 {
     public int val;
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     public int Func(int x)
     {
         x += 2;
@@ -27,7 +27,7 @@ public class A
 
 public class B
 {
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     public int FuncReplace(int x)
     {
         object obj = this;
@@ -42,7 +42,7 @@ public class B
             return x + 1;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     public int FuncProxy(int x)
     {
         Debug.Log("随便乱写");
@@ -55,7 +55,7 @@ public class B
 /// </summary>
 public class InstanceMethodTest
 {
-    public static MethodHook _hooker;
+    public static MethodHook _hook;
     public static bool callOriFunc;
     public static void InstallPatch()
     {
@@ -66,20 +66,19 @@ public class InstanceMethodTest
         MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
         MethodInfo miBProxy = typeB.GetMethod("FuncProxy");
 
-        _hooker = new MethodHook(miAFunc, miBReplace, miBProxy);
-        _hooker.Install();
+        _hook = new MethodHook(miAFunc, miBReplace, miBProxy);
+        _hook.Install();
     }
     public static void UninstallPatch()
     {
-        if(_hooker != null)
-            _hooker.Uninstall();
+        if(_hook != null)
+            _hook.Uninstall();
 
-        _hooker = null;
+        _hook = null;
     }
 
     A _a = new A();
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public int Test()
     {
         _a.val = 5;

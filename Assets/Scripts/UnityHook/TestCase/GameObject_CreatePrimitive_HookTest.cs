@@ -37,7 +37,7 @@ public class GameObject_CreatePrimitive_HookTest
         CreateAndPlacePrimitiveProxy(type, parent);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     private static void CreateAndPlacePrimitiveProxy(PrimitiveType type, GameObject parent)
     {
         // dummy code

@@ -47,7 +47,7 @@ public static class GameObject_SetActive_HookTest
 
     static int s_testVal = -1;
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     private static void SetActiveNew(GameObject go, bool value)
     {
         SetActiveProxy(go, value);
@@ -55,7 +55,7 @@ public static class GameObject_SetActive_HookTest
         s_testVal = value ? 1 : 0;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     private static void SetActiveProxy(GameObject go, bool value)
     {
         // dummy code

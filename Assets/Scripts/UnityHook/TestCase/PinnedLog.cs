@@ -24,11 +24,11 @@ using UnityEditor.Callbacks;
 public static class PinnedLog
 {
     private static Dictionary<int, string> _msgs = new Dictionary<int, string>(); // 点击编辑器运行按钮时会被Unity清空
-    private static MethodHook _hooker;
+    private static MethodHook _hook;
 
     static PinnedLog()
     {
-        if(_hooker == null)
+        if(_hook == null)
         {
 #if UNITY_2017_1_OR_NEWER
             Type type = Type.GetType("UnityEditor.LogEntries,UnityEditor.dll");
@@ -42,8 +42,8 @@ public static class PinnedLog
             MethodInfo miReplacement = type.GetMethod("NewClearLog", BindingFlags.Static | BindingFlags.NonPublic);
             MethodInfo miProxy = type.GetMethod("ProxyClearLog", BindingFlags.Static | BindingFlags.NonPublic);
 
-            _hooker = new MethodHook(miTarget, miReplacement, miProxy);
-            _hooker.Install();
+            _hook = new MethodHook(miTarget, miReplacement, miProxy);
+            _hook.Install();
         }
     }
 

@@ -10,16 +10,16 @@ public static class HookPool
 {
     private static Dictionary<MethodBase, MethodHook> _hooks = new Dictionary<MethodBase, MethodHook>();
 
-    public static void AddHooker(MethodBase method, MethodHook hooker)
+    public static void AddHook(MethodBase method, MethodHook hook)
     {
-        MethodHook preHooker;
-        if (_hooks.TryGetValue(method, out preHooker))
+        MethodHook preHook;
+        if (_hooks.TryGetValue(method, out preHook))
         {
-            preHooker.Uninstall();
-            _hooks[method] = hooker;
+            preHook.Uninstall();
+            _hooks[method] = hook;
         }
         else
-            _hooks.Add(method, hooker);
+            _hooks.Add(method, hook);
     }
 
     public static MethodHook GetHook(MethodBase method)
@@ -30,7 +30,7 @@ public static class HookPool
         return null;
     }
 
-    public static void RemoveHooker(MethodBase method)
+    public static void RemoveHook(MethodBase method)
     {
         _hooks.Remove(method);
     }

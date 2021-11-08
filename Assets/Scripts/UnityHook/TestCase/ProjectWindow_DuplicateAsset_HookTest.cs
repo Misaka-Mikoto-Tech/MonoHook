@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -64,6 +65,7 @@ public class ProjectWindow_DuplicateAsset_HookTest
         Debug.Log(sb.ToString());
     }
 
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     private static void DuplicateSelectedAssetsProxy()
     {
         // dummy

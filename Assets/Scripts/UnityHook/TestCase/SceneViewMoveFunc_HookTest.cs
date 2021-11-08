@@ -10,6 +10,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Reflection;
 using UnityEditor.AnimatedValues;
+using System.Runtime.CompilerServices;
 
 //[InitializeOnLoad] // 取消此行注释即生效（建议使用unity2020, 因为有几个变量名称与unity2019不一致，此代码未做兼容）
 public static class SceneViewMoveFunc_HookTest
@@ -151,6 +152,7 @@ public static class SceneViewMoveFunc_HookTest
         return s_FlySpeed.value * deltaTime;
     }
 
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     private static Vector3 GetMovementDirectionProxy()
     {
         // dummy

@@ -81,11 +81,11 @@ public class Test : MonoBehaviour
 
             txtTestVal.text = str;
         }
-        
+
         // 属性替换测试
         PropertyHookTest propTest = new PropertyHookTest();
         propTest.Test();
-        return;
+
         // 参数类型是私有类型的方法替换测试
         PrivateTypeArgMethodTest privateTypeArgMethodTest = new PrivateTypeArgMethodTest();
         privateTypeArgMethodTest.Test();

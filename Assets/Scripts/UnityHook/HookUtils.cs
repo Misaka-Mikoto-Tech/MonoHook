@@ -79,7 +79,7 @@ public static unsafe class HookUtils
     {
         flush_icache?.Invoke(code, size);
 
-#if HOOK_DEBUG_MODE
+#if ENABLE_HOOK_DEBUG
         Debug.Log($"flush icache at 0x{(ulong)code:X}, size:{size}");
 #endif
     }

@@ -25,13 +25,12 @@ public class PrivateTestA
 
     private int _val;
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public void FuncTest()
     {
         InnerClass innerClass = new InnerClass() { x = 2 };
         InnerFuncTest(innerClass, InnerEnum.E1);
     }
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     private void InnerFuncTest(InnerClass innerClass, InnerEnum innerEnum)
     {
         Debug.LogFormat("InnerTypeTest:innerClass.x:{0}, innerEnum:{1}, val:{2}", innerClass.x, innerEnum.ToString(), _val);
@@ -46,7 +45,6 @@ public class PrivateTestB
     /// <param name="a"></param>
     /// <param name="innerClass"></param>
     /// <param name="innerEnum"></param>
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public void FuncReplace(object innerClass, short innerEnum)
     {
         Debug.Log("PrivateTestB.FuncReplace called");
@@ -54,7 +52,7 @@ public class PrivateTestB
         Proxy(innerClass, innerEnum);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     public  void Proxy(object innerClass, short innerEnum)
     {
         Debug.Log("something" + innerClass.ToString());
@@ -72,8 +70,8 @@ public class PrivateTypeArgMethodTest
         MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
         MethodInfo miBProxy = typeB.GetMethod("Proxy");
 
-        MethodHook hooker = new MethodHook(miAPrivateFunc, miBReplace, miBProxy);
-        hooker.Install();
+        MethodHook hook = new MethodHook(miAPrivateFunc, miBReplace, miBProxy);
+        hook.Install();
 
         PrivateTestA privateTestA = new PrivateTestA();
         privateTestA.FuncTest();

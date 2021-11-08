@@ -12,7 +12,7 @@ using UnityEngine;
 public class CtorHookTarget
 {
     public int x;
-    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     public CtorHookTarget(int x)
     {
         this.x = x;
@@ -34,22 +34,21 @@ public class CtorHookTest
         MethodHook hookder = new MethodHook(mbCtorA, mbReplace, mbProxy);
         hookder.Install();
 
-        for(int i = 0; i < 5; i++)
+        for(int i = 0; i < 2; i++)
         {
-            //System.Threading.Thread.Sleep(2);
             CtorHookTarget hookTarget = new CtorHookTarget(1);
             Debug.Assert(hookTarget.x == 2, $"expect 2 but get {hookTarget.x} at i:{i}");
         }
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     public void CtorTargetReplace(int x)
     {
         x += 1;
         CtorTargetProxy(x);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    [MethodImpl(MethodImplOptions.NoOptimization)]
     public void CtorTargetProxy(int x)
     {
         Debug.Log("CtorTargetProxy");

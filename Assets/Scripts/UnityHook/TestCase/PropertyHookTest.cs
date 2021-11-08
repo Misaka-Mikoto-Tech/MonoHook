@@ -13,9 +13,8 @@ public class PropClassA
 {
     public int X
     {
-        [MethodImpl(MethodImplOptions.NoInlining)]
         get { return _x; }
-        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        [MethodImpl(MethodImplOptions.NoOptimization)]
         set
         {
             _x = value;
@@ -24,7 +23,7 @@ public class PropClassA
             _x *= 2;
             _x /= 2;
             _x -= 1; // code size too short will cause random crash on arm il2cpp
-            Debug.LogFormat("original prop X set:{0}", value);
+            Debug.LogFormat("original prop X set:{0}, _x:{1}", value, _x);
         }
     }
     private int _x;
@@ -37,17 +36,18 @@ public class PropClassA
 
 public class PropClassB
 {
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void PropXSetReplace(PropClassA a, int val)
+    [MethodImpl(MethodImplOptions.NoOptimization)]
+    public void PropXSetReplace(int val)
     {
+        // [this] ref to instance of PropClassA
         Debug.LogFormat("PropXSetReplace with value:{0}", val);
 
         val += 1;
-        PropXSetProxy(a, val);
+        PropXSetProxy(val);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void PropXSetProxy(PropClassA a, int val)
+    [MethodImpl(MethodImplOptions.NoOptimization)]
+    public void PropXSetProxy(int val)
     {
         Debug.Log("PropXSetProxy" + val);
     }
@@ -76,6 +76,9 @@ public class PropertyHookTest
         PropClassA a = new PropClassA(5);
         a.X = 7;
         Debug.Assert(a.X == 8);
+
+        a.X = 100;
+        Debug.Assert(a.X == 101);
     }
 	
 }

@@ -62,10 +62,7 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public unsafe class MethodHook
 {
-    public static int sleepTimeOnArm = 3; // ms
-
     public bool isHooked { get; private set; }
-    public bool sleepAfterHookOnArm = true;
 
     private MethodBase  _targetMethod;       // 需要被hook的目标方法
     private MethodInfo  _replacementMethod;  // 被hook后的替代方法
@@ -137,23 +134,20 @@ public unsafe class MethodHook
 
         _codePatcher.RemovePatch();
 
-        if (sleepAfterHookOnArm && LDasm.IsAndroidARM())
-            System.Threading.Thread.Sleep(sleepTimeOnArm); // wait for flush icache
-
         isHooked = false;
-        HookPool.RemoveHooker(_targetMethod);
+        HookPool.RemoveHook(_targetMethod);
     }
 
     #region private
     private void DoInstall()
     {
-        HookPool.AddHooker(_targetMethod, this);
+        HookPool.AddHook(_targetMethod, this);
 
         if(_codePatcher == null)
         {
             if (GetFunctionAddr())
             {
-#if HOOK_DEBUG_MODE
+#if ENABLE_HOOK_DEBUG
                 UnityEngine.Debug.Log($"Original [{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
                 UnityEngine.Debug.Log($"Original [{_replacementMethod.DeclaringType.Name}.{_replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
                 UnityEngine.Debug.Log($"Original [{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
@@ -162,8 +156,7 @@ public unsafe class MethodHook
                 CreateCodePatcher();
                 _codePatcher.ApplyPatch();
 
-
-#if HOOK_DEBUG_MODE
+#if ENABLE_HOOK_DEBUG
                 UnityEngine.Debug.Log($"New [{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
                 UnityEngine.Debug.Log($"New [{_replacementMethod.DeclaringType.Name}.{_replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
                 UnityEngine.Debug.Log($"New [{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
@@ -199,8 +192,8 @@ public unsafe class MethodHook
             if (codeSize < minMethodBodySize)
                 throw new Exception($"WRANING: size of method body[{methodName}] is too short({codeSize}), will random crash on IL2CPP release mode, please fill some dummy code inside");
 
-            if ((_proxyMethod.MethodImplementationFlags & MethodImplAttributes.NoInlining) != MethodImplAttributes.NoInlining)
-                throw new Exception($"WRANING: method [{ methodName}] must has a Attribute `MethodImpl(MethodImplOptions.NoInlining)` to prevent code call to this optimized by compiler");
+            if ((_proxyMethod.MethodImplementationFlags & MethodImplAttributes.NoOptimization) != MethodImplAttributes.NoOptimization)
+                throw new Exception($"WRANING: method [{ methodName}] must has a Attribute `MethodImpl(MethodImplOptions.NoOptimization)` to prevent code call to this optimized by compiler");
         }
 #endif
     }
