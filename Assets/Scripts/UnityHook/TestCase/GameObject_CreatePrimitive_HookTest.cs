@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEditor;
+using System.Runtime.CompilerServices;
 
 //[InitializeOnLoad]
 public class GameObject_CreatePrimitive_HookTest
@@ -36,9 +37,11 @@ public class GameObject_CreatePrimitive_HookTest
         CreateAndPlacePrimitiveProxy(type, parent);
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void CreateAndPlacePrimitiveProxy(PrimitiveType type, GameObject parent)
     {
-        // dummy
+        // dummy code
+        Debug.Log("something" + parent.ToString() + type.ToString() + 2);
     }
 }
 #endif

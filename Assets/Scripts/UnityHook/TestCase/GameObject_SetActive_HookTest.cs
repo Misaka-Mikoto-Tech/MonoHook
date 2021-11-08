@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 
@@ -21,7 +22,10 @@ public static class GameObject_SetActive_HookTest
 
     public static void Test(GameObject go)
     {
-
+        go.SetActive(false);
+        Debug.Assert(s_testVal == 0);
+        go.SetActive(true);
+        Debug.Assert(s_testVal == 1);
     }
 
     public static void Init()
@@ -41,15 +45,21 @@ public static class GameObject_SetActive_HookTest
         }
     }
 
+    static int s_testVal = -1;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SetActiveNew(GameObject go, bool value)
     {
         SetActiveProxy(go, value);
         Debug.LogFormat("GameObject [{0}] SetActive({1})", go.name, value);
+        s_testVal = value ? 1 : 0;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SetActiveProxy(GameObject go, bool value)
     {
-        // dummy
+        // dummy code
+        Debug.Log("something" + go.ToString());
     }
 }
 #endif

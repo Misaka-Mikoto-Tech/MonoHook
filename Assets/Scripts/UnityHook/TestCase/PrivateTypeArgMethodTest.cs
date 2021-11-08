@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class PrivateTestA
@@ -24,11 +25,13 @@ public class PrivateTestA
 
     private int _val;
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public void FuncTest()
     {
         InnerClass innerClass = new InnerClass() { x = 2 };
         InnerFuncTest(innerClass, InnerEnum.E1);
     }
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private void InnerFuncTest(InnerClass innerClass, InnerEnum innerEnum)
     {
         Debug.LogFormat("InnerTypeTest:innerClass.x:{0}, innerEnum:{1}, val:{2}", innerClass.x, innerEnum.ToString(), _val);
@@ -43,6 +46,7 @@ public class PrivateTestB
     /// <param name="a"></param>
     /// <param name="innerClass"></param>
     /// <param name="innerEnum"></param>
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public void FuncReplace(object innerClass, short innerEnum)
     {
         Debug.Log("PrivateTestB.FuncReplace called");
@@ -50,9 +54,10 @@ public class PrivateTestB
         Proxy(innerClass, innerEnum);
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public  void Proxy(object innerClass, short innerEnum)
     {
-        Debug.Log("something");
+        Debug.Log("something" + innerClass.ToString());
     }
 }
 

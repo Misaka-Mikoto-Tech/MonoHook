@@ -3,10 +3,12 @@
  * 实例方法 Hook 测试用例
  * note: 静态方法 Hook 参考 PinnedLog.cs
  */
+using DotNetDetour;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 
@@ -14,30 +16,33 @@ public class A
 {
     public int val;
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public int Func(int x)
     {
-        Debug.Log("call of A.Func");
-        return x + val;
+        x += 2;
+        val -= 1;
+        return x + val + 1;
     }
 }
 
 public class B
 {
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public int FuncReplace(int x)
     {
         object obj = this;
         A a = obj as A;
-        Debug.Log("call of B.Func");
+
         x += 1;
         a.val = 7;
 
-        // 可以调用原方法或者不调用
-        if (x < 100)
+        if (InstanceMethodTest.callOriFunc)
             return FuncProxy(x);
         else
             return x + 1;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public int FuncProxy(int x)
     {
         Debug.Log("随便乱写");
@@ -50,12 +55,9 @@ public class B
 /// </summary>
 public class InstanceMethodTest
 {
+    public static MethodHook _hooker;
     public static bool callOriFunc;
-    public static void InstallPatch() { }
-    public static void UninstallPatch() { }
-    public void Reset() { }
-
-    public int Test()
+    public static void InstallPatch()
     {
         Type typeA = typeof(A);
         Type typeB = typeof(B);
@@ -64,12 +66,24 @@ public class InstanceMethodTest
         MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
         MethodInfo miBProxy = typeB.GetMethod("FuncProxy");
 
-        MethodHook hooker = new MethodHook(miAFunc, miBReplace, miBProxy);
-        hooker.Install();
+        _hooker = new MethodHook(miAFunc, miBReplace, miBProxy);
+        _hooker.Install();
+    }
+    public static void UninstallPatch()
+    {
+        if(_hooker != null)
+            _hooker.Uninstall();
 
-        // 调用原始A的方法测试
-        A a = new A() { val = 5 };
-        int ret = a.Func(2);
+        _hooker = null;
+    }
+
+    A _a = new A();
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public int Test()
+    {
+        _a.val = 5;
+        int ret = _a.Func(2);
         return ret;
     }
     

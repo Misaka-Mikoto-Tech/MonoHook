@@ -14,6 +14,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
 #endif
 using UnityEngine;
+using System.Runtime.CompilerServices;
 
 
 /*
@@ -61,58 +62,20 @@ using UnityEngine;
 /// </summary>
 public unsafe class MethodHook
 {
+    public static int sleepTimeOnArm = 3; // ms
+
     public bool isHooked { get; private set; }
+    public bool sleepAfterHookOnArm = true;
 
     private MethodBase  _targetMethod;       // 需要被hook的目标方法
-    private MethodBase  _replacementMethod;  // 被hook后的替代方法
-    private MethodBase  _proxyMethod;        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
+    private MethodInfo  _replacementMethod;  // 被hook后的替代方法
+    private MethodInfo  _proxyMethod;        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
 
     private IntPtr      _targetPtr;          // 目标方法被 jit 后的地址指针
     private IntPtr      _replacementPtr;
     private IntPtr      _proxyPtr;
 
-    private struct JmpCode
-    {
-        public int codeSize { get { return code.Length; } }
-
-        public readonly byte[]  code;
-        public readonly int     addrOffset;
-
-        public JmpCode(byte[] code_, int addrOffset_) { code = code_; addrOffset = addrOffset_; }
-    }
-
-#region jump buffer template define
-
-    private static readonly JmpCode s_jmpCode_x86 = new JmpCode(new byte[] // 6 bytes
-    {
-        0xE9, 0x00, 0x00, 0x00, 0x00,                 // jmp $val   ;$val = $dst - $src - 5 
-    }, 1);
-    private static readonly JmpCode s_jmpCode_x64 = new JmpCode(new byte[] // 14 bytes
-    {
-        0xE9, 0x00, 0x00, 0x00, 0x00,                 // jmp $val   ;$val = $dst - $src - 5 
-    }, 1);
-    private static readonly JmpCode s_jmpCode_arm32_arm = new JmpCode(new byte[] // 8 bytes
-    {
-        0x04, 0xF0, 0x1F, 0xE5,                             // LDR PC, [PC, #-4]
-        0x00, 0x00, 0x00, 0x00,                             // $val
-    }, 4);
-    private static readonly JmpCode s_jmpCode_arm64 = new JmpCode(new byte[] //source https://github.com/MonoMod/MonoMod.Common
-    {
-        /*
-         * from 0x14 to 0x17 is B opcode
-         * offset bits is 26
-         * https://developer.arm.com/documentation/ddi0596/2021-09/Base-Instructions/B--Branch-
-         */
-        0x00, 0x00, 0x00, 0x14,                             //  B $val   ;$val = (($dst - $src)/4) & (1 << 26)
-    }, 0);
-
-    // arm thumb arch support has removed (unity will always gen arm32/arm64 code)
-
-    #endregion
-
-    private static readonly JmpCode s_jmpCode;
-
-    private byte[]                  _targetHeaderBackup;
+    private CodePatcher _codePatcher;
 
 #if UNITY_EDITOR
     /// <summary>
@@ -126,11 +89,6 @@ public unsafe class MethodHook
 
     static MethodHook()
     {
-        if (LDasm.IsAndroidARM())
-            s_jmpCode = IntPtr.Size == 4 ? s_jmpCode_arm32_arm : s_jmpCode_arm64;
-        else // x86/x64
-            s_jmpCode = IntPtr.Size == 4 ? s_jmpCode_x86 : s_jmpCode_x64;
-
 #if UNITY_EDITOR
         s_fi_GUISkin_current = typeof(GUISkin).GetField("current", BindingFlags.Static | BindingFlags.NonPublic);
 #endif
@@ -142,11 +100,13 @@ public unsafe class MethodHook
     /// <param name="targetMethod">需要替换的目标方法</param>
     /// <param name="replacementMethod">准备好的替换方法</param>
     /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
-    public MethodHook(MethodBase targetMethod, MethodBase replacementMethod, MethodBase proxyMethod = null)
+    public MethodHook(MethodBase targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod = null)
     {
         _targetMethod       = targetMethod;
         _replacementMethod  = replacementMethod;
         _proxyMethod        = proxyMethod;
+
+        CheckMethod();
     }
 
     public void Install()
@@ -175,9 +135,10 @@ public unsafe class MethodHook
         if (!isHooked)
             return;
 
-        byte* pTarget = (byte*)_targetPtr.ToPointer();
-        for (int i = 0; i < _targetHeaderBackup.Length; i++)
-            *pTarget++ = _targetHeaderBackup[i];
+        _codePatcher.RemovePatch();
+
+        if (sleepAfterHookOnArm && LDasm.IsAndroidARM())
+            System.Threading.Thread.Sleep(sleepTimeOnArm); // wait for flush icache
 
         isHooked = false;
         HookPool.RemoveHooker(_targetMethod);
@@ -188,14 +149,84 @@ public unsafe class MethodHook
     {
         HookPool.AddHooker(_targetMethod, this);
 
-        if(GetFunctionAddr())
+        if(_codePatcher == null)
         {
-            BackupHeader();
-            PatchTargetMethod();
-            PatchProxyMethod();
+            if (GetFunctionAddr())
+            {
+#if HOOK_DEBUG_MODE
+                UnityEngine.Debug.Log($"Original [{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"Original [{_replacementMethod.DeclaringType.Name}.{_replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"Original [{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
+#endif
+
+                CreateCodePatcher();
+                _codePatcher.ApplyPatch();
+
+
+#if HOOK_DEBUG_MODE
+                UnityEngine.Debug.Log($"New [{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"New [{_replacementMethod.DeclaringType.Name}.{_replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"New [{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
+#endif
+            }
         }
         
         isHooked = true;
+    }
+
+    private void CheckMethod()
+    {
+        string methodName = $"{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}";
+        if (_targetMethod.IsAbstract)
+            throw new Exception($"WRANING: you can not hook abstract method [{methodName}]");
+
+#if UNITY_EDITOR
+        int minMethodBodySize = 10;
+
+        {
+            if((_targetMethod.MethodImplementationFlags & MethodImplAttributes.InternalCall) != MethodImplAttributes.InternalCall)
+            {
+                int codeSize = _targetMethod.GetMethodBody().GetILAsByteArray().Length; // GetMethodBody can not call on il2cpp
+                if (codeSize < minMethodBodySize)
+                    throw new Exception($"WRANING: you can not hook method [{methodName}], cause its method body is too short({codeSize}), will random crash on IL2CPP release mode");
+            }
+        }
+
+        if (_proxyMethod != null)
+        {
+            methodName = $"{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}";
+            int codeSize = _proxyMethod.GetMethodBody().GetILAsByteArray().Length;
+            if (codeSize < minMethodBodySize)
+                throw new Exception($"WRANING: size of method body[{methodName}] is too short({codeSize}), will random crash on IL2CPP release mode, please fill some dummy code inside");
+
+            if ((_proxyMethod.MethodImplementationFlags & MethodImplAttributes.NoInlining) != MethodImplAttributes.NoInlining)
+                throw new Exception($"WRANING: method [{ methodName}] must has a Attribute `MethodImpl(MethodImplOptions.NoInlining)` to prevent code call to this optimized by compiler");
+        }
+#endif
+    }
+
+    private void CreateCodePatcher()
+    {
+        long addrOffset = Math.Abs(_targetPtr.ToInt64() - _replacementPtr.ToInt64());
+
+        if (LDasm.IsAndroidARM())
+        {
+            if (IntPtr.Size == 8)
+                _codePatcher = new CodePatcher_arm64(_targetPtr, _replacementPtr, _proxyPtr);
+            else if (addrOffset < ((1 << 25) - 1))
+                _codePatcher = new CodePatcher_arm32_near(_targetPtr, _replacementPtr, _proxyPtr);
+            else if (addrOffset < ((1 << 27) - 1))
+                _codePatcher = new CodePatcher_arm32_far(_targetPtr, _replacementPtr, _proxyPtr);
+            else
+                throw new Exception("address of target method and replacement method are too far, can not hook");
+        }
+        else
+        {
+            if (IntPtr.Size == 8)
+                _codePatcher = new CodePatcher_x64(_targetPtr, _replacementPtr, _proxyPtr);
+            else
+                _codePatcher = new CodePatcher_x86(_targetPtr, _replacementPtr, _proxyPtr);
+        }
     }
 
     /// <summary>
@@ -219,69 +250,6 @@ public unsafe class MethodHook
         return true;
     }
 
-    /// <summary>
-    /// 备份原始方法头
-    /// </summary>
-    private void BackupHeader()
-    {
-        byte* pTarget = (byte*)_targetPtr.ToPointer();
-
-        uint requireSize = LDasm.SizeofMinNumByte(pTarget, s_jmpCode.codeSize);
-        _targetHeaderBackup = new byte[requireSize];
-
-        for (int i = 0, imax = _targetHeaderBackup.Length; i < imax; i++)
-            _targetHeaderBackup[i] = *pTarget++;
-    }
-
-    // 将原始方法跳转到我们的方法
-    private void PatchTargetMethod()
-    {
-        EnableAddrModifiable(_targetPtr, _targetHeaderBackup.Length);
-
-        byte* pTarget = (byte*)_targetPtr.ToPointer();
-        byte* pAddr = pTarget + s_jmpCode.addrOffset;
-
-        for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
-            *pTarget++ = s_jmpCode.code[i];
-
-        if (IntPtr.Size == 4)
-            *(uint*)pAddr = (uint)_replacementPtr.ToInt32();
-        else
-            *(ulong*)pAddr = (ulong)_replacementPtr.ToInt64();
-    }
-
-    /// <summary>
-    /// 让 Proxy 方法的功能变成跳转向原始方法
-    /// </summary>
-    private void PatchProxyMethod()
-    {
-        EnableAddrModifiable(_proxyPtr, _targetHeaderBackup.Length + s_jmpCode.codeSize);
-
-        byte * pProxy = (byte*)_proxyPtr.ToPointer();
-
-        // fill backuped original target header code
-        for (int i = 0; i < _targetHeaderBackup.Length; i++)
-            *pProxy++ = _targetHeaderBackup[i];
-
-        // fill jump code
-        byte* pAddr = pProxy + s_jmpCode.addrOffset;
-        for (int i = 0, imax = s_jmpCode.codeSize; i < imax; i++)
-            *pProxy++ = s_jmpCode.code[i];
-
-        // fill jmp addr value(to target method)
-        if (IntPtr.Size == 4)
-            *(uint*)pAddr = (uint)_targetPtr.ToInt32() + (uint)_targetHeaderBackup.Length;
-        else
-            *(ulong*)pAddr = (ulong)_targetPtr.ToInt64() + (ulong)_targetHeaderBackup.Length;
-    }
-
-    private void EnableAddrModifiable(IntPtr ptr, int size)
-    {
-        if (!LDasm.IsIL2CPP())
-            return;
-
-        IL2CPPHelper.SetAddrFlagsToRWE(ptr, size);
-    }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)] // 好像在 IL2CPP 里无效
     private struct __ForCopy

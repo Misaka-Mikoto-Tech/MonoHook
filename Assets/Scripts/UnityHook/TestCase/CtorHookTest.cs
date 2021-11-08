@@ -6,11 +6,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class CtorHookTarget
 {
     public int x;
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     public CtorHookTarget(int x)
     {
         this.x = x;
@@ -26,22 +28,28 @@ public class CtorHookTest
         Type typeB = typeof(CtorHookTest);
 
         MethodBase mbCtorA = typeA.GetConstructor(new Type[] { typeof(int) });
-        MethodBase mbReplace = typeB.GetMethod("CtorTargetReplace");
-        MethodBase mbProxy = typeB.GetMethod("CtorTargetProxy");
+        MethodInfo mbReplace = typeB.GetMethod("CtorTargetReplace");
+        MethodInfo mbProxy = typeB.GetMethod("CtorTargetProxy");
 
         MethodHook hookder = new MethodHook(mbCtorA, mbReplace, mbProxy);
         hookder.Install();
 
-        CtorHookTarget hookTarget = new CtorHookTarget(1);
-        Debug.Assert(hookTarget.x == 2);
+        for(int i = 0; i < 5; i++)
+        {
+            //System.Threading.Thread.Sleep(2);
+            CtorHookTarget hookTarget = new CtorHookTarget(1);
+            Debug.Assert(hookTarget.x == 2, $"expect 2 but get {hookTarget.x} at i:{i}");
+        }
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     public void CtorTargetReplace(int x)
     {
         x += 1;
         CtorTargetProxy(x);
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     public void CtorTargetProxy(int x)
     {
         Debug.Log("CtorTargetProxy");

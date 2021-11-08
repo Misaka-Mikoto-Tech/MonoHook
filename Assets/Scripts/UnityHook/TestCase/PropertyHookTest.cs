@@ -6,16 +6,24 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class PropClassA
 {
     public int X
     {
+        [MethodImpl(MethodImplOptions.NoInlining)]
         get { return _x; }
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         set
         {
             _x = value;
+            _x += 2;
+            _x -= 1;
+            _x *= 2;
+            _x /= 2;
+            _x -= 1; // code size too short will cause random crash on arm il2cpp
             Debug.LogFormat("original prop X set:{0}", value);
         }
     }
@@ -29,22 +37,25 @@ public class PropClassA
 
 public class PropClassB
 {
-    public void PropXSetReplace(int val)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void PropXSetReplace(PropClassA a, int val)
     {
         Debug.LogFormat("PropXSetReplace with value:{0}", val);
 
         val += 1;
-        PropXSetProxy(val);
+        PropXSetProxy(a, val);
     }
 
-    public void PropXSetProxy(int val)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void PropXSetProxy(PropClassA a, int val)
     {
-        Debug.Log("PropXSetProxy");
+        Debug.Log("PropXSetProxy" + val);
     }
 }
 
 public class PropertyHookTest
 {
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public void Test()
     {
         Type typeA = typeof(PropClassA);
@@ -55,10 +66,12 @@ public class PropertyHookTest
 
         MethodInfo miBReplace = typeB.GetMethod("PropXSetReplace");
         MethodInfo miBProxy = typeB.GetMethod("PropXSetProxy");
-        Debug.Log($"PropertyHook of miBProxy is not null {miBProxy != null}");
 
-        MethodHook hooker = new MethodHook(miASet, miBReplace, miBProxy);
-        hooker.Install();
+        if (miBProxy == null)
+            throw new Exception("PropXSetProxy is null");
+
+        MethodHook hook = new MethodHook(miASet, miBReplace, miBProxy);
+        hook.Install();
 
         PropClassA a = new PropClassA(5);
         a.X = 7;
