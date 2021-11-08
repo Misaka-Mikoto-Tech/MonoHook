@@ -54,6 +54,14 @@ using System.Runtime.CompilerServices;
 0000000000403EC9   | 41 FF D3                           | call r11                                     |
 0000000000403ECC   | 48 83 C4 20                        | add rsp,20                                   |
 
+>>>>>>>>> arm64
+il2cpp:00000000003DE714 F5 0F 1D F8                             STR             X21, [SP,#-0x10+var_20]!                            |  << absolute safe
+il2cpp:00000000003DE718 F4 4F 01 A9                             STP             X20, X19, [SP,#0x20+var_10]                         |  << may be safe
+il2cpp:00000000003DE71C FD 7B 02 A9                             STP             X29, X30, [SP,#0x20+var_s0]                         |
+il2cpp:00000000003DE720 FD 83 00 91                             ADD             X29, SP, #0x20                                      |
+il2cpp:00000000003DE724 B5 30 00 B0                             ADRP            X21, #_ZZ62GameObject_SetActive_mCF1EEF2A314F3AE    |  << dangerous: relative instruction, can not be overwritten
+il2cpp:00000000003DE728 A2 56 47 F9                             LDR             method, [X21,#_ZZ62GameObject_SetActive_mCF] ;      |
+il2cpp:00000000003DE72C F3 03 01 2A                             MOV             W19, W1                                             |
  */
 
 

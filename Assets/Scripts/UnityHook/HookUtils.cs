@@ -48,7 +48,7 @@ public static unsafe class HookUtils
         flush_icache?.Invoke(code, size);
 
 #if ENABLE_HOOK_DEBUG
-        Debug.Log($"flush icache at 0x{(ulong)code:X}, size:{size}");
+        Debug.Log($"flush icache at 0x{(IntPtr.Size == 4 ? (uint)code : (ulong)code):x}, size:{size}");
 #endif
     }
 
@@ -155,7 +155,9 @@ public static unsafe class HookUtils
             flush_icache = Marshal.GetDelegateForFunctionPointer<DelegateFlushICache>(new IntPtr(s_ptr_flush_icache_arm64));
         }
 
-        Debug.Log($"flush_icache is null {flush_icache == null}");
+#if ENABLE_HOOK_DEBUG
+        Debug.Log($"flush_icache delegate is {((flush_icache != null) ? "not " : "")}null");
+#endif
     }
     [DllImport("libc", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
     private static extern int mprotect(IntPtr start, IntPtr len, MmapProts prot);
