@@ -65,7 +65,7 @@ public static unsafe class HookUtils
     const int PRINT_COL_SIZE = PRINT_SPLIT * 4;
     public static string HexToString(void* ptr, int size, int offset = 0)
     {
-        Func<IntPtr, string> formatAddr = (IntPtr addr) => IntPtr.Size == 4 ? $"0x{(uint)addr:x}" : $"0x{(ulong)addr:x}";
+        Func<IntPtr, string> formatAddr = (IntPtr addr__) => IntPtr.Size == 4 ? $"0x{(uint)addr__:x}" : $"0x{(ulong)addr__:x}";
 
         byte* addr = (byte*)ptr;
 
