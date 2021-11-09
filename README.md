@@ -1,13 +1,14 @@
 # MonoHook
 本代码的功能是运行时修改C#函数
 ## 特性：
-* 运行时直接修改内存中的 jit 代码，不会修改 UnityEditor.dll 等文件，避免让别人修改文件的尴尬。
-* 不影响调试。
+* 运行时直接修改内存中的 jit / aot 代码，不会修改真实文件。
+* 不影响调试及堆栈回溯。
 * 同时支持 .net 2.x 与 .net 4.x。
-* 目前测试支持 unity4.7.2, unity5.x, unity 2017 ~ 2021。
-* 使用很方便，在C#内定义签名与原始方法相同的两个方法然后注册一下就能用了。
+* 支持 unity4.7.2, unity5.x, unity 2017 ~ 2021 (只要Unity不更换 runtime 就可以自动支持以后的版本)。
+* 使用方便，在C#内定义签名与原始方法相同的两个方法注册后即可生效。
 
 ## 支持平台
+* Editor (Windows)
 * Android mono/il2cpp(armv7a, armv8a)
 * Windows mono/il2cpp(x86, x64)
 
@@ -53,3 +54,4 @@
 ## reference
 * https://github.com/bigbaldy1128/DotNetDetour
 * https://github.com/MonoMod/MonoMod.Common
+* https://github.com/mono/mono/blob/main/mono/mini/mini-arm64.c#L2038
