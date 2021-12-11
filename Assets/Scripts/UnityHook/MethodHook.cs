@@ -116,9 +116,6 @@ public unsafe class MethodHook
 
     public void Install()
     {
-        if (_targetMethod == null || _replacementMethod == null)
-            throw new Exception("MethodHook:_targetMethod and _replacementMethod can not be null");
-
         if (LDasm.IsiOS()) // iOS 不支持修改 code 所在区域 page
             return;
 
@@ -177,6 +174,9 @@ public unsafe class MethodHook
 
     private void CheckMethod()
     {
+        if (_targetMethod == null || _replacementMethod == null)
+            throw new Exception("MethodHook:_targetMethod and _replacementMethod can not be null");
+
         string methodName = $"{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}";
         if (_targetMethod.IsAbstract)
             throw new Exception($"WRANING: you can not hook abstract method [{methodName}]");
