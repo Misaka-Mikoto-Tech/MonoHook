@@ -22,10 +22,8 @@ public class SceneHierarchyStageHandling_HookTest
 #else
             var target = type.GetMethod("PrefabStageHeaderGUI", BindingFlags.Instance | BindingFlags.Public);
 #endif
-            var dst = typeof(SceneHierarchyStageHandling_HookTest).GetMethod("PrefabStageHeaderGUINew",
-                BindingFlags.Static | BindingFlags.NonPublic);
-            var old = typeof(SceneHierarchyStageHandling_HookTest).GetMethod("PrefabStageHeaderGUIOld",
-                BindingFlags.Static | BindingFlags.NonPublic);
+            var dst = new Action<object, Rect>(PrefabStageHeaderGUINew).Method;
+            var old = new Action<object, Rect>(PrefabStageHeaderGUIOld).Method;
 
             _hook = new MethodHook(target, dst, old);
             _hook.Install();

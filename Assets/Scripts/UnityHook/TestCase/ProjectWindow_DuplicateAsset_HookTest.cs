@@ -29,9 +29,8 @@ public class ProjectWindow_DuplicateAsset_HookTest
 #endif
             MethodInfo miTarget = type.GetMethod("DuplicateSelectedAssets", BindingFlags.Static | BindingFlags.NonPublic);
 
-            type = typeof(ProjectWindow_DuplicateAsset_HookTest);
-            MethodInfo miReplacement = type.GetMethod("DuplicateSelectedAssets", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("DuplicateSelectedAssetsProxy", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miReplacement = new Action(DuplicateSelectedAssets).Method;
+            MethodInfo miProxy = new Action(DuplicateSelectedAssetsProxy).Method;
 
             _hook = new MethodHook(miTarget, miReplacement, miProxy);
             _hook.Install();

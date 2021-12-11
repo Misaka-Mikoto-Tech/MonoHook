@@ -98,9 +98,8 @@ public static class SceneViewMoveFunc_HookTest
 
             MethodInfo miTarget = _sceneViewMotionType.GetMethod("GetMovementDirection", BindingFlags.Static | BindingFlags.NonPublic);
 
-            Type type = typeof(SceneViewMoveFunc_HookTest);
-            MethodInfo miReplacement = type.GetMethod("GetMovementDirectionNew", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("GetMovementDirectionProxy", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miReplacement = new Func<Vector3>(GetMovementDirectionNew).Method;
+            MethodInfo miProxy = new Func<Vector3>(GetMovementDirectionProxy).Method;
 
             _hook = new MethodHook(miTarget, miReplacement, miProxy);
             _hook.Install();

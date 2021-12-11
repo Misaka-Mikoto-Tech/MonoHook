@@ -33,12 +33,10 @@ public static class GameObject_SetActive_HookTest
         if (_hook == null)
         {
             Type type = typeof(GameObject).Assembly.GetType("UnityEngine.GameObject");
-
             MethodInfo miTarget = type.GetMethod("SetActive", BindingFlags.Instance | BindingFlags.Public);
 
-            type = typeof(GameObject_SetActive_HookTest);
-            MethodInfo miReplacement = type.GetMethod("SetActiveNew", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("SetActiveProxy", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miReplacement = new Action<GameObject, bool>(SetActiveNew).Method;
+            MethodInfo miProxy = new Action<GameObject, bool>(SetActiveProxy).Method;
 
             _hook = new MethodHook(miTarget, miReplacement, miProxy);
             _hook.Install();

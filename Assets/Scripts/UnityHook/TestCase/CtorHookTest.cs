@@ -24,12 +24,9 @@ public class CtorHookTest
 {
     public void Test()
     {
-        Type typeA = typeof(CtorHookTarget);
-        Type typeB = typeof(CtorHookTest);
-
-        MethodBase mbCtorA = typeA.GetConstructor(new Type[] { typeof(int) });
-        MethodInfo mbReplace = typeB.GetMethod("CtorTargetReplace");
-        MethodInfo mbProxy = typeB.GetMethod("CtorTargetProxy");
+        MethodBase mbCtorA = typeof(CtorHookTarget).GetConstructor(new Type[] { typeof(int) });
+        MethodInfo mbReplace = new Action<int>(CtorTargetReplace).Method;
+        MethodInfo mbProxy = new Action<int>(CtorTargetProxy).Method;
 
         MethodHook hookder = new MethodHook(mbCtorA, mbReplace, mbProxy);
         hookder.Install();
