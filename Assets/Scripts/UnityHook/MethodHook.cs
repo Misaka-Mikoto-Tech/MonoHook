@@ -189,7 +189,7 @@ public unsafe class MethodHook
             {
                 int codeSize = _targetMethod.GetMethodBody().GetILAsByteArray().Length; // GetMethodBody can not call on il2cpp
                 if (codeSize < minMethodBodySize)
-                    throw new Exception($"WRANING: you can not hook method [{methodName}], cause its method body is too short({codeSize}), will random crash on IL2CPP release mode");
+                    UnityEngine.Debug.LogWarning($"WRANING: you can not hook method [{methodName}], cause its method body is too short({codeSize}), will random crash on IL2CPP release mode");
             }
         }
 
@@ -198,7 +198,7 @@ public unsafe class MethodHook
             methodName = $"{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}";
             int codeSize = _proxyMethod.GetMethodBody().GetILAsByteArray().Length;
             if (codeSize < minMethodBodySize)
-                throw new Exception($"WRANING: size of method body[{methodName}] is too short({codeSize}), will random crash on IL2CPP release mode, please fill some dummy code inside");
+                UnityEngine.Debug.LogWarning($"WRANING: size of method body[{methodName}] is too short({codeSize}), will random crash on IL2CPP release mode, please fill some dummy code inside");
 
             if ((_proxyMethod.MethodImplementationFlags & MethodImplAttributes.NoOptimization) != MethodImplAttributes.NoOptimization)
                 throw new Exception($"WRANING: method [{ methodName}] must has a Attribute `MethodImpl(MethodImplOptions.NoOptimization)` to prevent code call to this optimized by compiler(pass args by shared stack)");
