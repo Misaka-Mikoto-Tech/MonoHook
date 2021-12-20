@@ -12,27 +12,28 @@
         a.Free();
  */
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace NativeClass
+namespace Native
 {
-    unsafe interface INativeClass
+    unsafe abstract class NativeClass
     {
-        void SetPtr(void* ptr);
-        void Free();
+        private void* _ptr;
+        public void SetPtr(void* ptr)
+        {
+            if (_ptr != null) throw new Exception("ptr can only be assigned once");
+            _ptr = ptr;
+        }
+        public void Free() { if (_ptr != null) NativeMemory.Free(_ptr); }
     }
 
-    unsafe struct Factory<T> where T :  class, INativeClass, new()
+    unsafe struct Factory<T> where T : NativeClass, new()
     {
         public static uint size { get; private set; }
         static byte[] header; // vtable *, monitor * and so on
 
-        static readonly Func<IntPtr, T> createFunc;
+        static readonly Func<IntPtr, T> cast2T;
 
         /// <summary>
         /// 在指定地址创建对象
@@ -45,7 +46,7 @@ namespace NativeClass
 
             fixed (void* headerPtr = header) Buffer.MemoryCopy(headerPtr, ptr, header.Length, header.Length);
 
-            T ret = createFunc(new IntPtr(ptr));
+            T ret = cast2T(new IntPtr(ptr));
             ret.SetPtr(ptr);
             return ret;
         }
@@ -68,7 +69,7 @@ namespace NativeClass
                 Buffer.MemoryCopy((void*)*(long*)pObj, headerPtr, header.Length, header.Length);
 
             var dummyFunc = GetO_Dummy;
-            createFunc = Unsafe.Read<Func<IntPtr, T>>(Unsafe.AsPointer(ref dummyFunc));
+            cast2T = Unsafe.Read<Func<IntPtr, T>>(Unsafe.AsPointer(ref dummyFunc));
         }
     }
 
