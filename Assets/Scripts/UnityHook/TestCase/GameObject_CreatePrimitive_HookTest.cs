@@ -18,12 +18,10 @@ public class GameObject_CreatePrimitive_HookTest
         if (_hook == null)
         {
             Type type = typeof(AssetDatabase).Assembly.GetType("UnityEditor.GOCreationCommands");
-
             MethodInfo miTarget = type.GetMethod("CreateAndPlacePrimitive", BindingFlags.Static | BindingFlags.NonPublic);
 
-            type = typeof(GameObject_CreatePrimitive_HookTest);
-            MethodInfo miReplacement = type.GetMethod("CreateAndPlacePrimitive", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("CreateAndPlacePrimitiveProxy", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miReplacement = new Action<PrimitiveType, GameObject>(CreateAndPlacePrimitive).Method;
+            MethodInfo miProxy = new Action<PrimitiveType, GameObject>(CreateAndPlacePrimitiveProxy).Method;
 
             _hook = new MethodHook(miTarget, miReplacement, miProxy);
             _hook.Install();

@@ -38,9 +38,8 @@ public static class PinnedLog
 #endif
             MethodInfo miTarget = type.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
 
-            type = typeof(PinnedLog);
-            MethodInfo miReplacement = type.GetMethod("NewClearLog", BindingFlags.Static | BindingFlags.NonPublic);
-            MethodInfo miProxy = type.GetMethod("ProxyClearLog", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo miReplacement = new Action(NewClearLog).Method;
+            MethodInfo miProxy = new Action(ProxyClearLog).Method;
 
             _hook = new MethodHook(miTarget, miReplacement, miProxy);
             _hook.Install();

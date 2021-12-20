@@ -635,15 +635,36 @@ namespace DotNetDetour
             return Result;
         }
 
+        static bool? s_isAndroidArm;
         public static bool IsAndroidARM()
         {
-            return UnityEngine.SystemInfo.operatingSystem.Contains("Android")
+            if(s_isAndroidArm.HasValue)
+                return s_isAndroidArm.Value;
+
+            s_isAndroidArm = UnityEngine.SystemInfo.operatingSystem.Contains("Android")
                 && UnityEngine.SystemInfo.processorType.Contains("ARM");
+
+            return s_isAndroidArm.Value;
         }
 
+        public static bool IsArm32()
+        {
+            return IsAndroidARM() && IntPtr.Size == 4;
+        }
+
+        public static bool IsArm64()
+        {
+            return IsAndroidARM() && IntPtr.Size == 8;
+        }
+
+        static bool? s_isiOS;
         public static bool IsiOS()
         {
-            return UnityEngine.SystemInfo.operatingSystem.ToLower().Contains("ios");
+            if(s_isiOS.HasValue)
+                return s_isiOS.Value;
+
+            s_isiOS = UnityEngine.SystemInfo.operatingSystem.ToLower().Contains("ios");
+            return s_isiOS.Value;
         }
 
         static bool? s_isIL2CPP;
@@ -670,7 +691,7 @@ namespace DotNetDetour
 
         public static bool IsThumb(IntPtr code)
         {
-            return ((long)code & 0x1) == 0x1;
+            return IsArm32() &&  ((long)code & 0x1) == 0x1;
         }
 
         /// <summary>
