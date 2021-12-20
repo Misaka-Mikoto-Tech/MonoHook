@@ -1,25 +1,15 @@
-﻿#if NET_6
+﻿#if NET6_0
 /*
  * Author: Misaka-Mikoto-Tech
  * Desc: 允许在指定内存地址创建一个非托管的 class，不依赖 Emit
  * 
  * eg.
- *      uint size = Factory<TestB>.size;
-        void* ptr = NativeMemory.Alloc(size);
-        TestB b = Factory<TestB>.CreateAt(ptr);
-        b.x = 10;
-        b.y = 100;
+ *      TestA a = Factory<TestB>.Create();
+        a.x = 10;
 
-        void* ptr2 = NativeMemory.Alloc(size); // 复制一份内存测试其内容是否正确
-        Buffer.MemoryCopy(ptr, ptr2, size, size);
-        
-        NativeMemory.Free(ptr); // 释放第一份内存
-
-        TestB b2 = Unsafe.Read<TestB>(&ptr2);
-        int val = b2.GetX();
+        int val = a.GetX();
         Console.WriteLine(val);
-
-        NativeMemory.Free(ptr2); // 释放第二份内存
+        a.Free();
  */
 using System;
 using System.Collections.Generic;
@@ -31,7 +21,13 @@ using System.Threading.Tasks;
 
 namespace NativeClass
 {
-    unsafe struct Factory<T> where T : class, new()
+    unsafe interface INativeClass
+    {
+        void SetPtr(void* ptr);
+        void Free();
+    }
+
+    unsafe struct Factory<T> where T :  class, INativeClass, new()
     {
         public static uint size { get; private set; }
         static byte[] header; // vtable *, monitor * and so on
@@ -43,11 +39,15 @@ namespace NativeClass
         /// </summary>
         /// <param name="ptr"></param>
         /// <returns></returns>
-        public static T CreateAt(void * ptr)
+        public static T Create(void * ptr = null)
         {
+            if (ptr == null) ptr = NativeMemory.Alloc(size);
+
             fixed (void* headerPtr = header) Buffer.MemoryCopy(headerPtr, ptr, header.Length, header.Length);
 
-            return createFunc(new IntPtr(ptr));
+            T ret = createFunc(new IntPtr(ptr));
+            ret.SetPtr(ptr);
+            return ret;
         }
 
         public static object GetO_Dummy(object obj)
