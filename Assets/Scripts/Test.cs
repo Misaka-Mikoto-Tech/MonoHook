@@ -97,6 +97,17 @@ public class Test : MonoBehaviour
         // 测试GameObject.SetActive
         GameObject_SetActive_HookTest.Test(btn.gameObject);
 
+        {// 泛型方法 hook 测试，目前仅支持 il2cpp
+            GenericMethod_HookTest.Install();
+
+            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Instantiate((UnityEngine.Object)go);
+
+            GameObject goNew = Instantiate<UnityEngine.Object>(go) as GameObject;
+            goNew.name = "hook_go_Instantiate";
+            goNew.transform.localPosition = new Vector3(-5f, 0, 0);
+            Destroy(go);
+        }
         Debug.Log("Test End");
     }
 #endif
