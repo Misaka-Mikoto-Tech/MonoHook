@@ -188,8 +188,8 @@ public unsafe class CodePatcher_arm64 : CodePatcher
 
     public CodePatcher_arm64(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy, s_jmpCode.Length)
     {
-        if (Math.Abs((long)target - (long)replace) >= ((1 << 27) - 1))
-            throw new ArgumentException("address offset of target and replace must less than (1 << 27) - 1)");
+        if (Math.Abs((long)target - (long)replace) >= ((1 << 26) - 1) * 4)
+            throw new ArgumentException("address offset of target and replace must less than (1 << 26) - 1) * 4");
 
 #if ENABLE_HOOK_DEBUG
         Debug.Log($"CodePatcher_arm64: { PrintAddrs() }");
