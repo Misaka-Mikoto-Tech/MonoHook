@@ -75,7 +75,7 @@ public static class PinnedLog
             UnityEngine.Debug.LogError(item.Value);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     private static void ProxyClearLog()
     {
         // 随便乱写点东西以占据空间
