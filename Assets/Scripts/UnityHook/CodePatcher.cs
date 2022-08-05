@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public unsafe abstract class CodePatcher
 {
@@ -22,11 +23,20 @@ public unsafe abstract class CodePatcher
 
     public void ApplyPatch()
     {
+        if (CheckHasHooked()) // TODO 此时可能无法 Uninstall
+            return;
+
         BackupHeader();
         EnableAddrModifiable();
         PatchTargetMethod();
         PatchProxyMethod();
     }
+
+    /// <summary>
+    /// 通过检查Signature判断是否已经被hook过（仅Editor下需要）
+    /// </summary>
+    /// <returns></returns>
+    public virtual bool CheckHasHooked() { return false; }
 
     public void RemovePatch()
     {
@@ -47,6 +57,9 @@ public unsafe abstract class CodePatcher
 
     protected void RestoreHeader()
     {
+        if (_targetHeaderBackup == null)
+            return;
+
         HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
 
         fixed (void* ptr = _targetHeaderBackup)
@@ -96,10 +109,40 @@ public unsafe abstract class CodePatcher
 
 public unsafe class CodePatcher_x86 : CodePatcher
 {
-    private static readonly byte[] s_jmpCode = new byte[] // 5 bytes
+#if UNITY_EDITOR
+    /// <summary>
+    /// 为了避免Unity2021.3.1后编辑器下没有完整reload从而导致dll被多次hook后Crash的问题，
+    /// 给hook代码增加特征代码用于校验
+    /// </summary>
+    protected byte[] _signatureCode;
+#endif
+
+    protected static readonly byte[] s_signatureCode = new byte[]
+    {
+#if UNITY_EDITOR
+        /*
+         * 冗余的特征代码,用于检查是否已被Hook过
+         * push eax
+         * mov eax, 0xbeafdead
+         * pop eax
+         */
+        0x50,
+        0xB8, 0xAD, 0xDE, 0xAF, 0xBE,
+        0x58
+#endif
+    };
+
+    //protected static readonly byte[] s_jmpCode = s_signatureCode.Concat(new byte[] // 5 bytes
+    //{
+    //    0xE9, 0x00, 0x00, 0x00, 0x00,                     // jmp $val   ; $val = $dst - $src - 5 
+    //}).ToArray();
+
+    protected static readonly byte[] s_jmpCode = new byte[] // 5 bytes
     {
         0xE9, 0x00, 0x00, 0x00, 0x00,                     // jmp $val   ; $val = $dst - $src - 5 
     };
+
+    protected static readonly int s_signatureLen = s_signatureCode.Length + 1;
 
     public CodePatcher_x86(IntPtr target, IntPtr replace, IntPtr proxy):base(target, replace, proxy, s_jmpCode.Length) { }
 
@@ -112,10 +155,17 @@ public unsafe class CodePatcher_x86 : CodePatcher
         int* pOffset = (int*)(ptr + 1);
         *pOffset = (int)val;
     }
+
+    public override bool CheckHasHooked()
+    {
+        return false;
+    }
 }
 
 public unsafe class CodePatcher_x64 : CodePatcher_x86 // x64 pathcer code is same to x86
 {
+    // push rax 与 push eax 二进制相同，都是0x50，因此无需特意处理
+
     public CodePatcher_x64(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy) { }
 }
 
