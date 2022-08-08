@@ -72,9 +72,9 @@ public unsafe class MethodHook
 {
     public bool isHooked { get; private set; }
 
-    private MethodBase  _targetMethod;       // 需要被hook的目标方法
-    private MethodInfo  _replacementMethod;  // 被hook后的替代方法
-    private MethodInfo  _proxyMethod;        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
+    public MethodBase targetMethod { get; private set; }       // 需要被hook的目标方法
+    public MethodInfo replacementMethod { get; private set; }  // 被hook后的替代方法
+    public MethodInfo proxyMethod { get; private set; }        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
 
     private IntPtr      _targetPtr;          // 目标方法被 jit 后的地址指针
     private IntPtr      _replacementPtr;
@@ -107,9 +107,9 @@ public unsafe class MethodHook
     /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
     public MethodHook(MethodBase targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod = null)
     {
-        _targetMethod       = targetMethod;
-        _replacementMethod  = replacementMethod;
-        _proxyMethod        = proxyMethod;
+        this.targetMethod       = targetMethod;
+        this.replacementMethod  = replacementMethod;
+        this.proxyMethod        = proxyMethod;
 
         CheckMethod();
     }
@@ -140,31 +140,31 @@ public unsafe class MethodHook
         _codePatcher.RemovePatch();
 
         isHooked = false;
-        HookPool.RemoveHooker(_targetMethod);
+        HookPool.RemoveHooker(targetMethod);
     }
 
     #region private
     private void DoInstall()
     {
-        HookPool.AddHook(_targetMethod, this);
+        HookPool.AddHook(targetMethod, this);
 
         if(_codePatcher == null)
         {
             if (GetFunctionAddr())
             {
 #if ENABLE_HOOK_DEBUG
-                UnityEngine.Debug.Log($"Original [{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
-                UnityEngine.Debug.Log($"Original [{_replacementMethod.DeclaringType.Name}.{_replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
-                UnityEngine.Debug.Log($"Original [{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"Original [{targetMethod.DeclaringType.Name}.{targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"Original [{replacementMethod.DeclaringType.Name}.{replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"Original [{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
 #endif
 
                 CreateCodePatcher();
                 _codePatcher.ApplyPatch();
 
 #if ENABLE_HOOK_DEBUG
-                UnityEngine.Debug.Log($"New [{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
-                UnityEngine.Debug.Log($"New [{_replacementMethod.DeclaringType.Name}.{_replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
-                UnityEngine.Debug.Log($"New [{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"New [{targetMethod.DeclaringType.Name}.{targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"New [{replacementMethod.DeclaringType.Name}.{replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
+                UnityEngine.Debug.Log($"New [{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
 #endif
             }
         }
@@ -174,33 +174,33 @@ public unsafe class MethodHook
 
     private void CheckMethod()
     {
-        if (_targetMethod == null || _replacementMethod == null)
+        if (targetMethod == null || replacementMethod == null)
             throw new Exception("MethodHook:_targetMethod and _replacementMethod can not be null");
 
-        string methodName = $"{_targetMethod.DeclaringType.Name}.{_targetMethod.Name}";
-        if (_targetMethod.IsAbstract)
+        string methodName = $"{targetMethod.DeclaringType.Name}.{targetMethod.Name}";
+        if (targetMethod.IsAbstract)
             throw new Exception($"WRANING: you can not hook abstract method [{methodName}]");
 
 #if UNITY_EDITOR
         int minMethodBodySize = 10;
 
         {
-            if((_targetMethod.MethodImplementationFlags & MethodImplAttributes.InternalCall) != MethodImplAttributes.InternalCall)
+            if((targetMethod.MethodImplementationFlags & MethodImplAttributes.InternalCall) != MethodImplAttributes.InternalCall)
             {
-                int codeSize = _targetMethod.GetMethodBody().GetILAsByteArray().Length; // GetMethodBody can not call on il2cpp
+                int codeSize = targetMethod.GetMethodBody().GetILAsByteArray().Length; // GetMethodBody can not call on il2cpp
                 if (codeSize < minMethodBodySize)
                     UnityEngine.Debug.LogWarning($"WRANING: you can not hook method [{methodName}], cause its method body is too short({codeSize}), will random crash on IL2CPP release mode");
             }
         }
 
-        if (_proxyMethod != null)
+        if (proxyMethod != null)
         {
-            methodName = $"{_proxyMethod.DeclaringType.Name}.{_proxyMethod.Name}";
-            int codeSize = _proxyMethod.GetMethodBody().GetILAsByteArray().Length;
+            methodName = $"{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}";
+            int codeSize = proxyMethod.GetMethodBody().GetILAsByteArray().Length;
             if (codeSize < minMethodBodySize)
                 UnityEngine.Debug.LogWarning($"WRANING: size of method body[{methodName}] is too short({codeSize}), will random crash on IL2CPP release mode, please fill some dummy code inside");
 
-            if ((_proxyMethod.MethodImplementationFlags & MethodImplAttributes.NoOptimization) != MethodImplAttributes.NoOptimization)
+            if ((proxyMethod.MethodImplementationFlags & MethodImplAttributes.NoOptimization) != MethodImplAttributes.NoOptimization)
                 throw new Exception($"WRANING: method [{ methodName}] must has a Attribute `MethodImpl(MethodImplOptions.NoOptimization)` to prevent code call to this optimized by compiler(pass args by shared stack)");
         }
 #endif
@@ -235,10 +235,10 @@ public unsafe class MethodHook
     /// </summary>
     private bool GetFunctionAddr()
     {
-        _targetPtr = GetFunctionAddr(_targetMethod);
-        _replacementPtr = GetFunctionAddr(_replacementMethod);
-        if (_proxyMethod != null)
-            _proxyPtr = GetFunctionAddr(_proxyMethod);
+        _targetPtr = GetFunctionAddr(targetMethod);
+        _replacementPtr = GetFunctionAddr(replacementMethod);
+        if (proxyMethod != null)
+            _proxyPtr = GetFunctionAddr(proxyMethod);
 
         if (_targetPtr == IntPtr.Zero || _proxyPtr == IntPtr.Zero)
             return false;

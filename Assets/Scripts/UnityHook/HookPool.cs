@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using System.Linq;
+using System.IO;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -13,28 +14,6 @@ using UnityEditor;
 public static class HookPool
 {
     private static Dictionary<MethodBase, MethodHook> _hooks = new Dictionary<MethodBase, MethodHook>();
-
-#if UNITY_EDITOR
-    static HookPool()
-    {
-        EditorApplication.playModeStateChanged += EditorApplication_playModeStateChanged;
-    }
-
-    static void EditorApplication_playModeStateChanged(PlayModeStateChange act)
-    {
-        switch(act)
-        {
-            case PlayModeStateChange.ExitingPlayMode:
-                /*
-                 * Unity2021.3.1f1 之后即使勾选 Enter Play Mode Option->Reload Domains 二次进入PlayMode时也不会全部被Reload, 导致会被Hook多次
-                 * TODO 检测是否重复Hook的模式修改为判断目标函数二进制是否与Hook代码相同
-                 */
-                // Debug.Log("退出播放前移除所有Hook，避免下次Play时Unity没有全部Reload导致多次Hook导致Crash");
-                UninstallAll();
-                break;
-        }
-    }
-#endif
 
     public static void AddHook(MethodBase method, MethodHook hook)
     {
@@ -50,6 +29,8 @@ public static class HookPool
 
     public static MethodHook GetHook(MethodBase method)
     {
+        if(method == null) return null;
+
         MethodHook hook;
         if (_hooks.TryGetValue(method, out hook))
             return hook;
@@ -58,6 +39,8 @@ public static class HookPool
 
     public static void RemoveHooker(MethodBase method)
     {
+        if (method == null) return;
+
         _hooks.Remove(method);
     }
 
@@ -69,4 +52,95 @@ public static class HookPool
 
         _hooks.Clear();
     }
+
+
+
+
+    #region Editor下Reload逻辑处理
+#if UNITY_EDITOR
+    [System.Serializable]
+    public class HookInfos_ForSave
+    {
+        public List<HookInfoItem_ForSave> items;
+
+        public HookInfos_ForSave(List<MethodHook> hooks)
+        {
+            items = new List<HookInfoItem_ForSave>();
+            foreach (var hook in hooks)
+            {
+                var info = new HookInfoItem_ForSave();
+                info.target = new MethodInfoData(hook.targetMethod);
+                info.replace = new MethodInfoData(hook.replacementMethod);
+                info.proxy = new MethodInfoData(hook.proxyMethod);
+                items.Add(info);
+            }
+        }
+    }
+
+    [System.Serializable]
+    public class HookInfoItem_ForSave
+    {
+        public MethodInfoData target;
+        public MethodInfoData replace;
+        public MethodInfoData proxy;
+    }
+    [System.Serializable]
+    public class MethodInfoData
+    {
+        public string memberType; // Constructor, MethodInfo
+        public string module;
+        public string name;
+        public string fullName;
+        public bool isPublic;
+        public bool isStatic;
+
+        public MethodInfoData(MethodBase mb)
+        {
+            module = mb.Module.Name;
+            name = mb.Name;
+            fullName = mb.ToString();
+            isPublic = mb.IsPublic;
+            isStatic = mb.IsStatic;
+        }
+
+        public MethodBase GetMethodInfo()
+        {
+            return null;
+        }
+    }
+
+    const string kHooksSavePath = "Temp/MonoHook_Save.json";
+    static HookPool()
+    {
+        //AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
+        //AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
+    }
+
+    static void OnBeforeAssemblyReload()
+    {
+        // save all hooks
+        Debug.Log($"OnBeforeAssemblyReload: hook count:{_hooks.Count}");
+
+        var hookListForSave = new HookInfos_ForSave(_hooks.Values.ToList());
+        string jsonStr = JsonUtility.ToJson(hookListForSave, true);
+        File.WriteAllText(kHooksSavePath, jsonStr);
+        Debug.Log($"hook list:{jsonStr}");
+        
+    }
+
+    static void OnAfterAssemblyReload()
+    {
+        // restore all hooks
+        Debug.Log($"OnBeforeAssemblyReload: hook count:{_hooks.Count}");
+        if (!File.Exists(kHooksSavePath))
+            return;
+
+        HookInfos_ForSave hookListForSave = JsonUtility.FromJson<HookInfos_ForSave>(kHooksSavePath);
+        foreach(var hook in hookListForSave.items)
+        {
+
+        }
+    }
+#endif
+    #endregion
 }
