@@ -120,11 +120,41 @@ namespace MonoHook
         }
     }
 
-    public unsafe class CodePatcher_x64 : CodePatcher_x86 // x64 pathcer code is same to x86
+    public unsafe class CodePatcher_x64_near : CodePatcher_x86 // x64_near pathcer code is same to x86
     {
-        // push rax 与 push eax 二进制相同，都是0x50，因此无需特意处理
+        public CodePatcher_x64_near(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy) { }
+    }
 
-        public CodePatcher_x64(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy) { }
+    /// <summary>
+    /// 距离超过2G的跳转
+    /// </summary>
+    public unsafe class CodePatcher_x64_far : CodePatcher
+    {
+        protected static readonly byte[] s_jmpCode = new byte[] // 12 bytes
+        {
+            // 由于 rax 会被函数作为返回值修改，并且不会被做饭参数使用，因此修改是安全的
+            0x48, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,       // mov rax, <jmpTo>
+            0x50,   // push rax
+            0xC3    // ret
+        };
+
+        //protected static readonly byte[] s_jmpCode2 = new byte[] // 14 bytes
+        //{
+        //    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        //    0xFF, 0x25, 0xF2, 0xFF, 0xFF, 0xFF // jmp [rip - 0xe]
+        //};
+
+        public CodePatcher_x64_far(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy, s_jmpCode.Length) { }
+        protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
+        {
+            byte* ptr = (byte*)jmpFrom;
+            *ptr++ = 0x48;
+            *ptr++ = 0xA1;
+            *(long*)ptr = (long)jmpTo;
+            ptr += 8;
+            *ptr++ = 0x50;
+            *ptr++ = 0xC3;
+        }
     }
 
     public unsafe class CodePatcher_arm32_near : CodePatcher

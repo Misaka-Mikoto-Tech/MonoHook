@@ -213,7 +213,10 @@ namespace MonoHook
 
         private void CreateCodePatcher()
         {
-            long addrOffset = Math.Abs(_targetPtr.ToInt64() - _replacementPtr.ToInt64());
+            long addrOffset = Math.Max(
+                Math.Abs(_targetPtr.ToInt64() - _replacementPtr.ToInt64()),
+                Math.Abs(_targetPtr.ToInt64() - _proxyPtr.ToInt64())
+                );
 
             if (LDasm.IsAndroidARM())
             {
@@ -229,7 +232,12 @@ namespace MonoHook
             else
             {
                 if (IntPtr.Size == 8)
-                    _codePatcher = new CodePatcher_x64(_targetPtr, _replacementPtr, _proxyPtr);
+                {
+                    if(addrOffset < 0x7fffffff) // 2G
+                        _codePatcher = new CodePatcher_x64_near(_targetPtr, _replacementPtr, _proxyPtr);
+                    else
+                        _codePatcher = new CodePatcher_x64_far(_targetPtr, _replacementPtr, _proxyPtr);
+                }
                 else
                     _codePatcher = new CodePatcher_x86(_targetPtr, _replacementPtr, _proxyPtr);
             }
