@@ -16,48 +16,51 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-public class GenericMethod_HookTest
+namespace MonoHook.Test
 {
-    private static MethodHook _hook;
-
-    public static void Install()
+    public class GenericMethod_HookTest
     {
-        if (!DotNetDetour.LDasm.IsIL2CPP())
-            return;
-        
-        if (_hook == null)
+        private static MethodHook _hook;
+
+        public static void Install()
         {
-            // 仅用作示例，此处实际应该去hook `UnityEngine.Object.Internal_CloneSingle`，而不是去hook它的上层泛型方法
-            MethodInfo gMiTarget = new Func<Texture2D, Texture2D>(UnityEngine.Object.Instantiate).Method.GetGenericMethodDefinition();
-            MethodInfo miTarget = gMiTarget.MakeGenericMethod(typeof(UnityEngine.Object));
+            if (!DotNetDetour.LDasm.IsIL2CPP())
+                return;
 
-            MethodInfo miReplacement = new Func<UnityEngine.Object, UnityEngine.Object>(GameInstanceNew).Method;
-            MethodInfo miProxy = new Func<UnityEngine.Object, UnityEngine.Object>(GameInstanceProxy).Method;
+            if (_hook == null)
+            {
+                // 仅用作示例，此处实际应该去hook `UnityEngine.Object.Internal_CloneSingle`，而不是去hook它的上层泛型方法
+                MethodInfo gMiTarget = new Func<Texture2D, Texture2D>(UnityEngine.Object.Instantiate).Method.GetGenericMethodDefinition();
+                MethodInfo miTarget = gMiTarget.MakeGenericMethod(typeof(UnityEngine.Object));
 
-            _hook = new MethodHook(miTarget, miReplacement, miProxy);
-            _hook.Install();
+                MethodInfo miReplacement = new Func<UnityEngine.Object, UnityEngine.Object>(GameInstanceNew).Method;
+                MethodInfo miProxy = new Func<UnityEngine.Object, UnityEngine.Object>(GameInstanceProxy).Method;
+
+                _hook = new MethodHook(miTarget, miReplacement, miProxy);
+                _hook.Install();
+            }
         }
-    }
 
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    private static T GameInstanceNew<T>(T go) where T : UnityEngine.Object
-    {
-        Debug.LogFormat("【自定义实现】Object.Instantiate(Object original), Prefab名称：{0}", go.name);
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        private static T GameInstanceNew<T>(T go) where T : UnityEngine.Object
+        {
+            Debug.LogFormat("【自定义实现】Object.Instantiate(Object original), Prefab名称：{0}", go.name);
 
-        /* 此处不能写 GameInstanceProxy<T>(go); 或者 GameInstanceProxy(go);
-         * 否则会在生成 il2cpp 代码时使用固定索引 1 从 RuntimeMethod 动态取函数地址，导致异常(当前函数索引为0)
-         * 而使用 GameInstanceProxy<UnityEngine.Object>(go); 则会在编译期就确定函数地址, 不会动态获取, 
-         * 此时 RuntimeInfo 参数会传递 `GameInstanceProxy<Object>`， 但由于此参数主要用来校验参数类型，而 GameInstanceProxy 的参数类型与原有定义一致，因此不会报错
-         */
-        var obj = GameInstanceProxy<UnityEngine.Object>(go);
-        return obj as T;
-    }
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    private static T GameInstanceProxy<T>(T go) where T : UnityEngine.Object
-    {
-        // 此处的函数实现永远不会起作用，随便写
-        Debug.Log("something" + go.ToString());
-        return null;
+            /* 此处不能写 GameInstanceProxy<T>(go); 或者 GameInstanceProxy(go);
+             * 否则会在生成 il2cpp 代码时使用固定索引 1 从 RuntimeMethod 动态取函数地址，导致异常(当前函数索引为0)
+             * 而使用 GameInstanceProxy<UnityEngine.Object>(go); 则会在编译期就确定函数地址, 不会动态获取, 
+             * 此时 RuntimeInfo 参数会传递 `GameInstanceProxy<Object>`， 但由于此参数主要用来校验参数类型，而 GameInstanceProxy 的参数类型与原有定义一致，因此不会报错
+             */
+            var obj = GameInstanceProxy<UnityEngine.Object>(go);
+            return obj as T;
+        }
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        private static T GameInstanceProxy<T>(T go) where T : UnityEngine.Object
+        {
+            // 此处的函数实现永远不会起作用，随便写
+            Debug.Log("something" + go.ToString());
+            return null;
+        }
     }
 }
 #endif

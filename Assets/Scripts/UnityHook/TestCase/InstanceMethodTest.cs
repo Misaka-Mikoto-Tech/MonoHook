@@ -11,81 +11,83 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-
-public class A
+namespace MonoHook.Test
 {
-    public int val;
-
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    public int Func(int x)
+    public class A
     {
-        x += 2;
-        val -= 1;
-        return x + val + 1;
-    }
-}
+        public int val;
 
-public class B
-{
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    public int FuncReplace(int x)
-    {
-        object obj = this;
-        A a = obj as A;
-
-        x += 1;
-        a.val = 7;
-
-        if (InstanceMethodTest.callOriFunc)
-            return FuncProxy(x);
-        else
-            return x + 1;
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public int Func(int x)
+        {
+            x += 2;
+            val -= 1;
+            return x + val + 1;
+        }
     }
 
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    public int FuncProxy(int x)
+    public class B
     {
-        Debug.Log("随便乱写");
-        return x;
-    }
-}
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public int FuncReplace(int x)
+        {
+            object obj = this;
+            A a = obj as A;
 
-/// <summary>
-/// 测试实例方法 Hook
-/// </summary>
-public class InstanceMethodTest
-{
-    public static MethodHook _hook;
-    public static bool callOriFunc;
-    public static void InstallPatch()
-    {
-        Type typeA = typeof(A);
-        Type typeB = typeof(B);
+            x += 1;
+            a.val = 7;
 
-        MethodInfo miAFunc = typeA.GetMethod("Func");
-        MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
-        MethodInfo miBProxy = typeB.GetMethod("FuncProxy");
+            if (InstanceMethodTest.callOriFunc)
+                return FuncProxy(x);
+            else
+                return x + 1;
+        }
 
-        _hook = new MethodHook(miAFunc, miBReplace, miBProxy);
-        _hook.Install();
-    }
-    public static void UninstallPatch()
-    {
-        if(_hook != null)
-            _hook.Uninstall();
-
-        _hook = null;
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public int FuncProxy(int x)
+        {
+            Debug.Log("随便乱写");
+            return x;
+        }
     }
 
-    A _a = new A();
-
-    public int Test()
+    /// <summary>
+    /// 测试实例方法 Hook
+    /// </summary>
+    public class InstanceMethodTest
     {
-        _a.val = 5;
-        int ret = _a.Func(2);
-        return ret;
-    }
-    
+        public static MethodHook _hook;
+        public static bool callOriFunc;
+        public static void InstallPatch()
+        {
+            Type typeA = typeof(A);
+            Type typeB = typeof(B);
 
+            MethodInfo miAFunc = typeA.GetMethod("Func");
+            MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
+            MethodInfo miBProxy = typeB.GetMethod("FuncProxy");
+
+            _hook = new MethodHook(miAFunc, miBReplace, miBProxy);
+            _hook.Install();
+        }
+        public static void UninstallPatch()
+        {
+            if (_hook != null)
+                _hook.Uninstall();
+
+            _hook = null;
+        }
+
+        A _a = new A();
+
+        public int Test()
+        {
+            _a.val = 5;
+            int ret = _a.Func(2);
+            return ret;
+        }
+
+
+    }
 }
 #endif

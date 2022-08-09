@@ -9,46 +9,49 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-public class CtorHookTarget
+namespace MonoHook.Test
 {
-    public int x;
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    public CtorHookTarget(int x)
+    public class CtorHookTarget
     {
-        this.x = x;
-        Debug.LogFormat("ctor with x:{0}", x);
-    }
-}
-
-public class CtorHookTest
-{
-    public void Test()
-    {
-        MethodBase mbCtorA = typeof(CtorHookTarget).GetConstructor(new Type[] { typeof(int) });
-        MethodInfo mbReplace = new Action<int>(CtorTargetReplace).Method;
-        MethodInfo mbProxy = new Action<int>(CtorTargetProxy).Method;
-
-        MethodHook hookder = new MethodHook(mbCtorA, mbReplace, mbProxy);
-        hookder.Install();
-
-        for(int i = 0; i < 2; i++)
+        public int x;
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public CtorHookTarget(int x)
         {
-            CtorHookTarget hookTarget = new CtorHookTarget(1);
-            Debug.Assert(hookTarget.x == 2, $"expect 2 but get {hookTarget.x} at i:{i}");
+            this.x = x;
+            Debug.LogFormat("ctor with x:{0}", x);
         }
     }
 
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    public void CtorTargetReplace(int x)
+    public class CtorHookTest
     {
-        x += 1;
-        CtorTargetProxy(x);
-    }
+        public void Test()
+        {
+            MethodBase mbCtorA = typeof(CtorHookTarget).GetConstructor(new Type[] { typeof(int) });
+            MethodInfo mbReplace = new Action<int>(CtorTargetReplace).Method;
+            MethodInfo mbProxy = new Action<int>(CtorTargetProxy).Method;
 
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    public void CtorTargetProxy(int x)
-    {
-        Debug.Log("CtorTargetProxy");
+            MethodHook hookder = new MethodHook(mbCtorA, mbReplace, mbProxy);
+            hookder.Install();
+
+            for (int i = 0; i < 2; i++)
+            {
+                CtorHookTarget hookTarget = new CtorHookTarget(1);
+                Debug.Assert(hookTarget.x == 2, $"expect 2 but get {hookTarget.x} at i:{i}");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public void CtorTargetReplace(int x)
+        {
+            x += 1;
+            CtorTargetProxy(x);
+        }
+
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public void CtorTargetProxy(int x)
+        {
+            Debug.Log("CtorTargetProxy");
+        }
     }
 }
 #endif

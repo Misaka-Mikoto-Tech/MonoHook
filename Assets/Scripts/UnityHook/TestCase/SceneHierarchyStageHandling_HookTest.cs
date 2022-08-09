@@ -8,46 +8,49 @@ using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-//[InitializeOnLoad]
-public class SceneHierarchyStageHandling_HookTest
+namespace MonoHook.Test
 {
-    private static MethodHook _hook;
-    static SceneHierarchyStageHandling_HookTest()
+    //[InitializeOnLoad]
+    public class SceneHierarchyStageHandling_HookTest
     {
-        if (_hook == null)
+        private static MethodHook _hook;
+        static SceneHierarchyStageHandling_HookTest()
         {
-            Type type = Type.GetType("UnityEditor.SceneHierarchyStageHandling,UnityEditor.dll");
+            if (_hook == null)
+            {
+                Type type = Type.GetType("UnityEditor.SceneHierarchyStageHandling,UnityEditor.dll");
 #if UNITY_2021_2_OR_NEWER
-            var target = type.GetMethod("StageHeaderGUI", BindingFlags.Instance | BindingFlags.Public);
+                var target = type.GetMethod("StageHeaderGUI", BindingFlags.Instance | BindingFlags.Public);
 #else
             var target = type.GetMethod("PrefabStageHeaderGUI", BindingFlags.Instance | BindingFlags.Public);
 #endif
-            var dst = new Action<object, Rect>(PrefabStageHeaderGUINew).Method;
-            var old = new Action<object, Rect>(PrefabStageHeaderGUIOld).Method;
+                var dst = new Action<object, Rect>(PrefabStageHeaderGUINew).Method;
+                var old = new Action<object, Rect>(PrefabStageHeaderGUIOld).Method;
 
-            _hook = new MethodHook(target, dst, old);
-            _hook.Install();
+                _hook = new MethodHook(target, dst, old);
+                _hook.Install();
+            }
         }
-    }
-    static void PrefabStageHeaderGUINew(object handle, Rect rect)
-    {
-        PrefabStageHeaderGUIOld(handle, rect);
-        GUILayout.Button("^wow^");
-        // GUI.Button(new Rect(rect.xMax - 100, rect.y, 16, rect.height), "x");
-    }
-
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    static void PrefabStageHeaderGUIOld(object handle, Rect rect)
-    {
-        // 随便乱写点东西以占据空间
-        for (int i = 0; i < 100; i++)
+        static void PrefabStageHeaderGUINew(object handle, Rect rect)
         {
-            UnityEngine.Debug.Log("something");
+            PrefabStageHeaderGUIOld(handle, rect);
+            GUILayout.Button("^wow^");
+            // GUI.Button(new Rect(rect.xMax - 100, rect.y, 16, rect.height), "x");
         }
-        UnityEngine.Debug.Log(Application.targetFrameRate);
+
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        static void PrefabStageHeaderGUIOld(object handle, Rect rect)
+        {
+            // 随便乱写点东西以占据空间
+            for (int i = 0; i < 100; i++)
+            {
+                UnityEngine.Debug.Log("something");
+            }
+            UnityEngine.Debug.Log(Application.targetFrameRate);
+        }
+
+
     }
-
-
 }
 #endif
 #endif

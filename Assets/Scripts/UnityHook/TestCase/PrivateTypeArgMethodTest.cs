@@ -9,72 +9,75 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-public class PrivateTestA
+namespace MonoHook.Test
 {
-    private class InnerClass
+    public class PrivateTestA
     {
-        public int x;
+        private class InnerClass
+        {
+            public int x;
+        }
+
+        private enum InnerEnum : short
+        {
+            E0 = 0,
+            E1 = 1,
+            E2 = 2,
+        }
+
+        private int _val;
+
+        public void FuncTest()
+        {
+            InnerClass innerClass = new InnerClass() { x = 2 };
+            InnerFuncTest(innerClass, InnerEnum.E1);
+        }
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        private void InnerFuncTest(InnerClass innerClass, InnerEnum innerEnum)
+        {
+            Debug.LogFormat("InnerTypeTest:innerClass.x:{0}, innerEnum:{1}, val:{2}", innerClass.x, innerEnum.ToString(), _val);
+        }
     }
 
-    private enum InnerEnum : short
+    public class PrivateTestB
     {
-        E0 = 0,
-        E1 = 1,
-        E2 = 2,
+        /// <summary>
+        /// 替换函数，参数类型只要"兼容"就可以，兼容的定义是引用类型可以使用任意引用类型替代，值类型保证 size 一致就可以
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="innerClass"></param>
+        /// <param name="innerEnum"></param>
+        public void FuncReplace(object innerClass, short innerEnum)
+        {
+            Debug.Log("PrivateTestB.FuncReplace called");
+            innerEnum += 1;
+            Proxy(innerClass, innerEnum);
+        }
+
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public void Proxy(object innerClass, short innerEnum)
+        {
+            Debug.Log("something" + innerClass.ToString());
+        }
     }
 
-    private int _val;
-
-    public void FuncTest()
+    public class PrivateTypeArgMethodTest
     {
-        InnerClass innerClass = new InnerClass() { x = 2 };
-        InnerFuncTest(innerClass, InnerEnum.E1);
-    }
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    private void InnerFuncTest(InnerClass innerClass, InnerEnum innerEnum)
-    {
-        Debug.LogFormat("InnerTypeTest:innerClass.x:{0}, innerEnum:{1}, val:{2}", innerClass.x, innerEnum.ToString(), _val);
-    }
-}
+        public void Test()
+        {
+            Type typeA = typeof(PrivateTestA);
+            Type typeB = typeof(PrivateTestB);
 
-public class PrivateTestB
-{
-    /// <summary>
-    /// 替换函数，参数类型只要"兼容"就可以，兼容的定义是引用类型可以使用任意引用类型替代，值类型保证 size 一致就可以
-    /// </summary>
-    /// <param name="a"></param>
-    /// <param name="innerClass"></param>
-    /// <param name="innerEnum"></param>
-    public void FuncReplace(object innerClass, short innerEnum)
-    {
-        Debug.Log("PrivateTestB.FuncReplace called");
-        innerEnum += 1;
-        Proxy(innerClass, innerEnum);
-    }
+            MethodInfo miAPrivateFunc = typeA.GetMethod("InnerFuncTest", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
+            MethodInfo miBProxy = typeB.GetMethod("Proxy");
 
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    public  void Proxy(object innerClass, short innerEnum)
-    {
-        Debug.Log("something" + innerClass.ToString());
-    }
-}
+            MethodHook hook = new MethodHook(miAPrivateFunc, miBReplace, miBProxy);
+            hook.Install();
 
-public class PrivateTypeArgMethodTest
-{
-    public void Test()
-    {
-        Type typeA = typeof(PrivateTestA);
-        Type typeB = typeof(PrivateTestB);
-
-        MethodInfo miAPrivateFunc = typeA.GetMethod("InnerFuncTest", BindingFlags.Instance | BindingFlags.NonPublic);
-        MethodInfo miBReplace = typeB.GetMethod("FuncReplace");
-        MethodInfo miBProxy = typeB.GetMethod("Proxy");
-
-        MethodHook hook = new MethodHook(miAPrivateFunc, miBReplace, miBProxy);
-        hook.Install();
-
-        PrivateTestA privateTestA = new PrivateTestA();
-        privateTestA.FuncTest();
+            PrivateTestA privateTestA = new PrivateTestA();
+            privateTestA.FuncTest();
+        }
     }
 }
 #endif

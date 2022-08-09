@@ -10,54 +10,57 @@ using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 
-//[InitializeOnLoad]
-public static class GameObject_SetActive_HookTest
+namespace MonoHook.Test
 {
-    private static MethodHook _hook;
-
-    static GameObject_SetActive_HookTest()
+    //[InitializeOnLoad]
+    public static class GameObject_SetActive_HookTest
     {
-        Init();
-    }
+        private static MethodHook _hook;
 
-    public static void Test(GameObject go)
-    {
-        go.SetActive(false);
-        Debug.Assert(s_testVal == 0);
-        go.SetActive(true);
-        Debug.Assert(s_testVal == 1);
-    }
-
-    public static void Init()
-    {
-        if (_hook == null)
+        static GameObject_SetActive_HookTest()
         {
-            Type type = typeof(GameObject).Assembly.GetType("UnityEngine.GameObject");
-            MethodInfo miTarget = type.GetMethod("SetActive", BindingFlags.Instance | BindingFlags.Public);
-
-            MethodInfo miReplacement = new Action<GameObject, bool>(SetActiveNew).Method;
-            MethodInfo miProxy = new Action<GameObject, bool>(SetActiveProxy).Method;
-
-            _hook = new MethodHook(miTarget, miReplacement, miProxy);
-            _hook.Install();
+            Init();
         }
-    }
 
-    static int s_testVal = -1;
+        public static void Test(GameObject go)
+        {
+            go.SetActive(false);
+            Debug.Assert(s_testVal == 0);
+            go.SetActive(true);
+            Debug.Assert(s_testVal == 1);
+        }
 
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    private static void SetActiveNew(GameObject go, bool value)
-    {
-        SetActiveProxy(go, value);
-        Debug.LogFormat("GameObject [{0}] SetActive({1})", go.name, value);
-        s_testVal = value ? 1 : 0;
-    }
+        public static void Init()
+        {
+            if (_hook == null)
+            {
+                Type type = typeof(GameObject).Assembly.GetType("UnityEngine.GameObject");
+                MethodInfo miTarget = type.GetMethod("SetActive", BindingFlags.Instance | BindingFlags.Public);
 
-    [MethodImpl(MethodImplOptions.NoOptimization)]
-    private static void SetActiveProxy(GameObject go, bool value)
-    {
-        // dummy code
-        Debug.Log("something" + go.ToString());
+                MethodInfo miReplacement = new Action<GameObject, bool>(SetActiveNew).Method;
+                MethodInfo miProxy = new Action<GameObject, bool>(SetActiveProxy).Method;
+
+                _hook = new MethodHook(miTarget, miReplacement, miProxy);
+                _hook.Install();
+            }
+        }
+
+        static int s_testVal = -1;
+
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        private static void SetActiveNew(GameObject go, bool value)
+        {
+            SetActiveProxy(go, value);
+            Debug.LogFormat("GameObject [{0}] SetActive({1})", go.name, value);
+            s_testVal = value ? 1 : 0;
+        }
+
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        private static void SetActiveProxy(GameObject go, bool value)
+        {
+            // dummy code
+            Debug.Log("something" + go.ToString());
+        }
     }
 }
 #endif
