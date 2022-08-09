@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+#if UNITY_EDITOR && false
 using System;
 using System.IO;
 using System.Collections;
