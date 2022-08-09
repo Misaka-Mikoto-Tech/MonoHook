@@ -55,96 +55,10 @@ namespace MonoHook
             _hooks.Clear();
         }
 
-
-
-
-        #region Editor下Reload逻辑处理
-#if UNITY_EDITOR
-        [System.Serializable]
-        public class HookInfos_ForSave
+        public static List<MethodHook> GetAllHooks()
         {
-            public List<HookInfoItem_ForSave> items;
-
-            public HookInfos_ForSave(List<MethodHook> hooks)
-            {
-                items = new List<HookInfoItem_ForSave>();
-                foreach (var hook in hooks)
-                {
-                    var info = new HookInfoItem_ForSave();
-                    info.target = new MethodInfoData(hook.targetMethod);
-                    info.replace = new MethodInfoData(hook.replacementMethod);
-                    info.proxy = new MethodInfoData(hook.proxyMethod);
-                    items.Add(info);
-                }
-            }
+            return _hooks.Values.ToList();
         }
-
-        [System.Serializable]
-        public class HookInfoItem_ForSave
-        {
-            public MethodInfoData target;
-            public MethodInfoData replace;
-            public MethodInfoData proxy;
-        }
-        [System.Serializable]
-        public class MethodInfoData
-        {
-            public string memberType; // Constructor, MethodInfo
-            public string module;
-            public string name;
-            public string fullName;
-            public bool isPublic;
-            public bool isStatic;
-
-            public MethodInfoData(MethodBase mb)
-            {
-                module = mb.Module.Name;
-                name = mb.Name;
-                fullName = mb.ToString();
-                isPublic = mb.IsPublic;
-                isStatic = mb.IsStatic;
-            }
-
-            public MethodBase GetMethodInfo()
-            {
-                return null;
-            }
-        }
-
-        const string kHooksSavePath = "Temp/MonoHook_Save.json";
-        static HookPool()
-        {
-            //AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
-            //AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
-        }
-
-        static void OnBeforeAssemblyReload()
-        {
-            // save all hooks
-            Debug.Log($"OnBeforeAssemblyReload: hook count:{_hooks.Count}");
-
-            var hookListForSave = new HookInfos_ForSave(_hooks.Values.ToList());
-            string jsonStr = JsonUtility.ToJson(hookListForSave, true);
-            File.WriteAllText(kHooksSavePath, jsonStr);
-            Debug.Log($"hook list:{jsonStr}");
-
-        }
-
-        static void OnAfterAssemblyReload()
-        {
-            // restore all hooks
-            Debug.Log($"OnBeforeAssemblyReload: hook count:{_hooks.Count}");
-            if (!File.Exists(kHooksSavePath))
-                return;
-
-            HookInfos_ForSave hookListForSave = JsonUtility.FromJson<HookInfos_ForSave>(kHooksSavePath);
-            foreach (var hook in hookListForSave.items)
-            {
-
-            }
-        }
-#endif
-        #endregion
     }
 
 }

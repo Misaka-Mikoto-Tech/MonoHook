@@ -72,6 +72,7 @@ namespace MonoHook
     public unsafe class MethodHook
     {
         public bool isHooked { get; private set; }
+        public bool isPlayModeHook { get; private set; }
 
         public MethodBase targetMethod { get; private set; }       // 需要被hook的目标方法
         public MethodInfo replacementMethod { get; private set; }  // 被hook后的替代方法
@@ -106,7 +107,7 @@ namespace MonoHook
         /// <param name="targetMethod">需要替换的目标方法</param>
         /// <param name="replacementMethod">准备好的替换方法</param>
         /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
-        public MethodHook(MethodBase targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod = null)
+        public MethodHook(MethodBase targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod)
         {
             this.targetMethod       = targetMethod;
             this.replacementMethod  = replacementMethod;
@@ -131,6 +132,7 @@ namespace MonoHook
 #else
             DoInstall();
 #endif
+            isPlayModeHook = Application.isPlaying;
         }
 
         public void Uninstall()
@@ -147,6 +149,9 @@ namespace MonoHook
         #region private
         private void DoInstall()
         {
+            if (targetMethod == null || replacementMethod == null || proxyMethod == null)
+                throw new Exception("one of methods is null");
+
             HookPool.AddHook(targetMethod, this);
 
             if (_codePatcher == null)
@@ -175,8 +180,8 @@ namespace MonoHook
 
         private void CheckMethod()
         {
-            if (targetMethod == null || replacementMethod == null)
-                throw new Exception("MethodHook:_targetMethod and _replacementMethod can not be null");
+            if (targetMethod == null || replacementMethod == null || proxyMethod == null)
+                throw new Exception("MethodHook:targetMethod and replacementMethod and proxyMethod can not be null");
 
             string methodName = $"{targetMethod.DeclaringType.Name}.{targetMethod.Name}";
             if (targetMethod.IsAbstract)
@@ -194,7 +199,6 @@ namespace MonoHook
                 }
             }
 
-            if (proxyMethod != null)
             {
                 methodName = $"{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}";
                 int codeSize = proxyMethod.GetMethodBody().GetILAsByteArray().Length;
@@ -238,10 +242,9 @@ namespace MonoHook
         {
             _targetPtr = GetFunctionAddr(targetMethod);
             _replacementPtr = GetFunctionAddr(replacementMethod);
-            if (proxyMethod != null)
-                _proxyPtr = GetFunctionAddr(proxyMethod);
+            _proxyPtr = GetFunctionAddr(proxyMethod);
 
-            if (_targetPtr == IntPtr.Zero || _proxyPtr == IntPtr.Zero)
+            if (_targetPtr == IntPtr.Zero || _replacementPtr == IntPtr.Zero || _proxyPtr == IntPtr.Zero)
                 return false;
 
             if (LDasm.IsThumb(_targetPtr) || LDasm.IsThumb(_replacementPtr))

@@ -21,7 +21,7 @@ namespace MonoHook
 
         private void Awake()
         {
-            btn.onClick.AddListener(OnBtnTestClick);
+            btn.onClick.AddListener(OnBtnTestClick); 
         }
         private void Start()
         {
@@ -32,6 +32,21 @@ namespace MonoHook
             sb.AppendFormat("processorType:{0}\r\n", SystemInfo.processorType);
             sb.AppendLine();
             txtInfo.text = sb.ToString();
+
+            Type t = typeof(GameObject);
+            Debug.Log(t.Assembly.Location);
+            t = t.Assembly.GetType("UnityEngine.GameObject");
+            if (t != null)
+                Debug.Log("Get OK");
+            else
+                Debug.Log("Get Fail");
+
+            t = Type.GetType(t.AssemblyQualifiedName);
+            Debug.Log(t.AssemblyQualifiedName);
+            if (t != null)
+                Debug.Log("Get OK");
+            else
+                Debug.Log("Get Fail");
         }
 
         public void OnBtnTestClick()
