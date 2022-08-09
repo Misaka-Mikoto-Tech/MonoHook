@@ -120,28 +120,31 @@ namespace MonoHook
         }
     }
 
+    /// <summary>
+    /// x64下2G 内的跳转
+    /// </summary>
     public unsafe class CodePatcher_x64_near : CodePatcher_x86 // x64_near pathcer code is same to x86
     {
         public CodePatcher_x64_near(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy) { }
     }
 
     /// <summary>
-    /// 距离超过2G的跳转
+    /// x64下距离超过2G的跳转
     /// </summary>
     public unsafe class CodePatcher_x64_far : CodePatcher
     {
         protected static readonly byte[] s_jmpCode = new byte[] // 12 bytes
         {
-            // 由于 rax 会被函数作为返回值修改，并且不会被做饭参数使用，因此修改是安全的
-            0x48, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,       // mov rax, <jmpTo>
-            0x50,   // push rax
-            0xC3    // ret
+            // 由于 rax 会被函数作为返回值修改，并且不会被做为参数使用，因此修改是安全的
+            0x48, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,         // mov rax, <jmpTo>
+            0x50,                                                               // push rax
+            0xC3                                                                // ret
         };
 
         //protected static readonly byte[] s_jmpCode2 = new byte[] // 14 bytes
         //{
-        //    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        //    0xFF, 0x25, 0xF2, 0xFF, 0xFF, 0xFF // jmp [rip - 0xe]
+        //    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,       // <jmpTo>
+        //    0xFF, 0x25, 0xF2, 0xFF, 0xFF, 0xFF                    // jmp [rip - 0xe]
         //};
 
         public CodePatcher_x64_far(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy, s_jmpCode.Length) { }
