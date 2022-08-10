@@ -136,7 +136,7 @@ namespace MonoHook
         protected static readonly byte[] s_jmpCode = new byte[] // 12 bytes
         {
             // 由于 rax 会被函数作为返回值修改，并且不会被做为参数使用，因此修改是安全的
-            0x48, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,         // mov rax, <jmpTo>
+            0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,         // mov rax, <jmpTo>
             0x50,                                                               // push rax
             0xC3                                                                // ret
         };
@@ -152,7 +152,7 @@ namespace MonoHook
         {
             byte* ptr = (byte*)jmpFrom;
             *ptr++ = 0x48;
-            *ptr++ = 0xA1;
+            *ptr++ = 0xB8;
             *(long*)ptr = (long)jmpTo;
             ptr += 8;
             *ptr++ = 0x50;
