@@ -221,7 +221,7 @@ namespace MonoHook
             if (LDasm.IsAndroidARM())
             {
                 if (IntPtr.Size == 8)
-                    _codePatcher = new CodePatcher_arm64(_targetPtr, _replacementPtr, _proxyPtr);
+                    _codePatcher = new CodePatcher_arm64_near(_targetPtr, _replacementPtr, _proxyPtr);
                 else if (addrOffset < ((1 << 25) - 1))
                     _codePatcher = new CodePatcher_arm32_near(_targetPtr, _replacementPtr, _proxyPtr);
                 else if (addrOffset < ((1 << 27) - 1))
