@@ -11,13 +11,18 @@ using UnityEngine;
 
 namespace MonoHook.Test
 {
-    [InitializeOnLoad]
+    //[InitializeOnLoad] // 有需求时可以打开，也可以手动按需注册Hook
     public class BuildPipeline_StripDll_HookTest
     {
         private static MethodHook _hook_ReportBuildResults;
         private static MethodHook _hook_StripAssembliesTo;
 
         static BuildPipeline_StripDll_HookTest()
+        {
+            InstallHook();
+        }
+
+        public static void InstallHook()
         {
             do
             {
@@ -29,12 +34,12 @@ namespace MonoHook.Test
                 }
 
                 MethodInfo miTarget = type.GetMethod("ReportBuildResults", BindingFlags.Instance | BindingFlags.NonPublic);
-                if(miTarget == null)
+                if (miTarget == null)
                 {
                     Debug.LogError($"can not find method: UnityEditor.Modules.BeeBuildPostprocessor.ReportBuildResults");
                     break;
                 }
-                    
+
                 MethodInfo miReplace = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(ReportBuildResults_Replace), BindingFlags.Static | BindingFlags.NonPublic);
                 MethodInfo miProxy = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(ReportBuildResults_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
 
@@ -42,7 +47,7 @@ namespace MonoHook.Test
                 _hook_ReportBuildResults.Install();
 
                 Debug.Log("Hook BuildPipeline_StripDll_HookTest.ReportBuildResults installed");
-            } while(false);
+            } while (false);
 
             do
             {
@@ -68,6 +73,12 @@ namespace MonoHook.Test
 
                 Debug.Log("Hook BuildPipeline_StripDll_HookTest._hook_StripAssembliesTo installed");
             } while (false);
+        }
+
+        public static void UninstallHook()
+        {
+            _hook_ReportBuildResults?.Uninstall();
+            _hook_StripAssembliesTo?.Uninstall();
         }
 
 

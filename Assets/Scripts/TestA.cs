@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 namespace MonoHook
 {
-    public class TestA   : MonoBehaviour
+    public unsafe class TestA   : MonoBehaviour
     {
         public Button btn;
         public Text txtInfo;
@@ -25,7 +25,6 @@ namespace MonoHook
         }
         private void Start()
         {
-            
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("pointer size:{0}\r\n", System.IntPtr.Size);
             sb.AppendFormat("is IL2CPP:{0}\r\n", LDasm.IsIL2CPP());
@@ -33,21 +32,6 @@ namespace MonoHook
             sb.AppendFormat("processorType:{0}\r\n", SystemInfo.processorType);
             sb.AppendLine();
             txtInfo.text = sb.ToString();
-
-            Type t = typeof(GameObject);
-            Debug.Log(t.Assembly.Location);
-            t = t.Assembly.GetType("UnityEngine.GameObject");
-            if (t != null)
-                Debug.Log("Get OK");
-            else
-                Debug.Log("Get Fail");
-
-            t = Type.GetType(t.AssemblyQualifiedName);
-            Debug.Log(t.AssemblyQualifiedName);
-            if (t != null)
-                Debug.Log("Get OK");
-            else
-                Debug.Log("Get Fail");
         }
 
         public void OnBtnTestClick()

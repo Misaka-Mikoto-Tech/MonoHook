@@ -66,6 +66,9 @@ namespace MonoHook
         }
         protected void PatchProxyMethod()
         {
+            if (_pProxy == null)
+                return;
+
             HookUtils.FlushICache(_pProxy, _targetHeaderBackup.Length * 2);
 
             // copy target's code to proxy

@@ -41,6 +41,9 @@ namespace MonoHook
         /// </summary>
         public static void SetAddrFlagsToRWE(IntPtr ptr, int size)
         {
+            if (ptr == IntPtr.Zero)
+                return;
+
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 
             uint oldProtect;

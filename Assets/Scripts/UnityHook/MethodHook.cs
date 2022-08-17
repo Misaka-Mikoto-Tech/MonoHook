@@ -149,8 +149,8 @@ namespace MonoHook
         #region private
         private void DoInstall()
         {
-            if (targetMethod == null || replacementMethod == null || proxyMethod == null)
-                throw new Exception("one of methods is null");
+            if (targetMethod == null || replacementMethod == null)
+                throw new Exception("none of methods targetMethod or replacementMethod can be null");
 
             HookPool.AddHook(targetMethod, this);
 
@@ -161,7 +161,8 @@ namespace MonoHook
 #if ENABLE_HOOK_DEBUG
                     UnityEngine.Debug.Log($"Original [{targetMethod.DeclaringType.Name}.{targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
                     UnityEngine.Debug.Log($"Original [{replacementMethod.DeclaringType.Name}.{replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
-                    UnityEngine.Debug.Log($"Original [{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
+                    if(proxyMethod != null)
+                        UnityEngine.Debug.Log($"Original [{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
 #endif
 
                     CreateCodePatcher();
@@ -170,7 +171,8 @@ namespace MonoHook
 #if ENABLE_HOOK_DEBUG
                     UnityEngine.Debug.Log($"New [{targetMethod.DeclaringType.Name}.{targetMethod.Name}]: {HookUtils.HexToString(_targetPtr.ToPointer(), 64, -16)}");
                     UnityEngine.Debug.Log($"New [{replacementMethod.DeclaringType.Name}.{replacementMethod.Name}]: {HookUtils.HexToString(_replacementPtr.ToPointer(), 64, -16)}");
-                    UnityEngine.Debug.Log($"New [{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
+                    if(proxyMethod != null)
+                        UnityEngine.Debug.Log($"New [{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}]: {HookUtils.HexToString(_proxyPtr.ToPointer(), 64, -16)}");
 #endif
                 }
             }
@@ -180,7 +182,7 @@ namespace MonoHook
 
         private void CheckMethod()
         {
-            if (targetMethod == null || replacementMethod == null || proxyMethod == null)
+            if (targetMethod == null || replacementMethod == null)
                 throw new Exception("MethodHook:targetMethod and replacementMethod and proxyMethod can not be null");
 
             string methodName = $"{targetMethod.DeclaringType.Name}.{targetMethod.Name}";
@@ -199,6 +201,7 @@ namespace MonoHook
                 }
             }
 
+            if(proxyMethod != null)
             {
                 methodName = $"{proxyMethod.DeclaringType.Name}.{proxyMethod.Name}";
                 int codeSize = proxyMethod.GetMethodBody().GetILAsByteArray().Length;
@@ -213,10 +216,10 @@ namespace MonoHook
 
         private void CreateCodePatcher()
         {
-            long addrOffset = Math.Max(
-                Math.Abs(_targetPtr.ToInt64() - _replacementPtr.ToInt64()),
-                Math.Abs(_targetPtr.ToInt64() - _proxyPtr.ToInt64())
-                );
+            long addrOffset = Math.Abs(_targetPtr.ToInt64() - _proxyPtr.ToInt64());
+            
+            if(_proxyPtr != IntPtr.Zero)
+                addrOffset = Math.Max(addrOffset, Math.Abs(_targetPtr.ToInt64() - _proxyPtr.ToInt64()));
 
             if (LDasm.IsARM())
             {
@@ -252,7 +255,10 @@ namespace MonoHook
             _replacementPtr = GetFunctionAddr(replacementMethod);
             _proxyPtr = GetFunctionAddr(proxyMethod);
 
-            if (_targetPtr == IntPtr.Zero || _replacementPtr == IntPtr.Zero || _proxyPtr == IntPtr.Zero)
+            if (_targetPtr == IntPtr.Zero || _replacementPtr == IntPtr.Zero)
+                return false;
+
+            if (proxyMethod != null && _proxyPtr == null)
                 return false;
 
             if (LDasm.IsThumb(_targetPtr) || LDasm.IsThumb(_replacementPtr))
@@ -277,6 +283,9 @@ namespace MonoHook
         /// <returns></returns>
         private IntPtr GetFunctionAddr(MethodBase method)
         {
+            if(method == null)
+                return IntPtr.Zero;
+
             if (!LDasm.IsIL2CPP())
                 return method.MethodHandle.GetFunctionPointer();
             else
