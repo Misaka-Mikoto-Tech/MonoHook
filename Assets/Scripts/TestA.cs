@@ -25,6 +25,7 @@ namespace MonoHook
         }
         private void Start()
         {
+            
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("pointer size:{0}\r\n", System.IntPtr.Size);
             sb.AppendFormat("is IL2CPP:{0}\r\n", LDasm.IsIL2CPP());
@@ -124,6 +125,7 @@ namespace MonoHook
                 goNew.name = "hook_go_Instantiate";
                 goNew.transform.localPosition = new Vector3(-5f, 0, 0);
                 Destroy(go);
+                Destroy(goNew);
             }
             Debug.Log("Test End");
         }

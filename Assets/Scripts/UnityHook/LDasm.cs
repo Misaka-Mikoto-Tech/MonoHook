@@ -609,7 +609,7 @@ namespace DotNetDetour
         /// <returns></returns>
         public static uint SizeofMinNumByte(void* code, int size)
         {
-            if (IsAndroidARM())
+            if (IsARM())
                 return (uint)((size + 3) / 4) * 4; // 此为 jit 模式下的长度，不再支持 thumb
 
             uint Length;
@@ -635,26 +635,25 @@ namespace DotNetDetour
             return Result;
         }
 
-        static bool? s_isAndroidArm;
-        public static bool IsAndroidARM()
+        static bool? s_isArm;
+        public static bool IsARM()
         {
-            if(s_isAndroidArm.HasValue)
-                return s_isAndroidArm.Value;
+            if(s_isArm.HasValue)
+                return s_isArm.Value;
 
-            s_isAndroidArm = UnityEngine.SystemInfo.operatingSystem.Contains("Android")
-                && UnityEngine.SystemInfo.processorType.Contains("ARM");
+            s_isArm = UnityEngine.SystemInfo.processorType.Contains("ARM"); // TODO 检查苹果M系列笔记本的返回值
 
-            return s_isAndroidArm.Value;
+            return s_isArm.Value;
         }
 
         public static bool IsArm32()
         {
-            return IsAndroidARM() && IntPtr.Size == 4;
+            return IsARM() && IntPtr.Size == 4;
         }
 
         public static bool IsArm64()
         {
-            return IsAndroidARM() && IntPtr.Size == 8;
+            return IsARM() && IntPtr.Size == 8;
         }
 
         static bool? s_isiOS;

@@ -218,7 +218,7 @@ namespace MonoHook
                 Math.Abs(_targetPtr.ToInt64() - _proxyPtr.ToInt64())
                 );
 
-            if (LDasm.IsAndroidARM())
+            if (LDasm.IsARM())
             {
                 if (IntPtr.Size == 8)
                     _codePatcher = new CodePatcher_arm64_near(_targetPtr, _replacementPtr, _proxyPtr);
