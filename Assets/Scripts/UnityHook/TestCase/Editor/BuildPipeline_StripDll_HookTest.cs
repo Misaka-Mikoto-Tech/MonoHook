@@ -8,14 +8,35 @@ using System.Text;
 using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
+using System.Linq;
 
 namespace MonoHook.Test
 {
-    //[InitializeOnLoad] // 有需求时可以打开，也可以手动按需注册Hook
+    // 有需求时可以打开，也可以手动按需注册Hook
+    //[InitializeOnLoad]
     public class BuildPipeline_StripDll_HookTest
     {
+        // 尝试 Hook 3个函数，至少一个被调用就可以达到要求
+        private static MethodHook _hook_Default_PostProcess;
         private static MethodHook _hook_ReportBuildResults;
         private static MethodHook _hook_StripAssembliesTo;
+
+        struct BuildPostProcessArgs
+        {
+            public BuildTarget target;
+            public int subTarget;
+            public string stagingArea;
+            public string stagingAreaData;
+            public string stagingAreaDataManaged;
+            public string playerPackage;
+            public string installPath;
+            public string companyName;
+            public string productName;
+            public Guid productGUID;
+            public BuildOptions options;
+            public UnityEditor.Build.Reporting.BuildReport report;
+            internal /*RuntimeClassRegistry*/object usedClassRegistry;
+        }
 
         static BuildPipeline_StripDll_HookTest()
         {
@@ -24,6 +45,33 @@ namespace MonoHook.Test
 
         public static void InstallHook()
         {
+            do
+            {
+                Type type = Type.GetType("UnityEditor.Modules.DefaultBuildPostprocessor,UnityEditor.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
+                if (type == null)
+                {
+                    Debug.LogError($"can not find type: UnityEditor.Modules.DefaultBuildPostprocessor");
+                    break;
+                }
+
+                MethodInfo[] miTargets = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+                MethodInfo miTarget = (from mi in miTargets where mi.Name == "PostProcess" && mi.GetParameters().Length == 2 select mi).FirstOrDefault();
+
+                if (miTarget == null)
+                {
+                    Debug.LogError($"can not find method: UnityEditor.Modules.DefaultBuildPostprocessor.PostProcess");
+                    break;
+                }
+
+                MethodInfo miReplace = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(PostProcess_Replace), BindingFlags.Static | BindingFlags.NonPublic);
+                MethodInfo miProxy = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(PostProcess_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
+
+                _hook_Default_PostProcess = new MethodHook(miTarget, miReplace, miProxy);
+                _hook_Default_PostProcess.Install();
+
+                Debug.Log("Hook BuildPipeline_StripDll_HookTest.PostProcess installed");
+            } while (false);
+
             do
             {
                 Type type = Type.GetType("UnityEditor.Modules.BeeBuildPostprocessor,UnityEditor.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
@@ -71,16 +119,34 @@ namespace MonoHook.Test
                 _hook_StripAssembliesTo = new MethodHook(miTarget, miReplace, miProxy);
                 _hook_StripAssembliesTo.Install();
 
-                Debug.Log("Hook BuildPipeline_StripDll_HookTest._hook_StripAssembliesTo installed");
+                Debug.Log("Hook BuildPipeline_StripDll_HookTest.StripAssembliesTo installed");
             } while (false);
         }
 
         public static void UninstallHook()
         {
+            _hook_Default_PostProcess?.Uninstall();
             _hook_ReportBuildResults?.Uninstall();
             _hook_StripAssembliesTo?.Uninstall();
         }
 
+        static void PostProcess_Replace(object obj, BuildPostProcessArgs args, out /*BuildProperties*/ object outProperties)
+        {
+            try
+            {
+                // 注意：此函数中途可能会被 Unity throw Exception
+                PostProcess_Proxy(obj, args, out outProperties);
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                // TODO: 可以在此把裁剪后的dll复制出来
+                Debug.LogError("PostProcess_Replace called");
+            }
+        }
 
         static void ReportBuildResults_Replace(object obj, /*BeeDriverResult*/ object result)
         {
@@ -98,6 +164,14 @@ namespace MonoHook.Test
             return ret;
         }
 
+#region Proxy Methods
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        static void PostProcess_Proxy(object obj, BuildPostProcessArgs args, out /*BuildProperties*/ object outProperties)
+        {
+            Debug.Log("dummy code" + 100);
+            outProperties = null;
+        }
+
         [MethodImpl(MethodImplOptions.NoOptimization)]
         static void ReportBuildResults_Proxy(object obj, /*BeeDriverResult*/ object result)
         {
@@ -113,6 +187,7 @@ namespace MonoHook.Test
             error = null;
             return true;
         }
+#endregion
     }
 }
 
