@@ -91,9 +91,11 @@ namespace MonoHook.Test
 
         static bool StripAssembliesTo_Replace(string outputFolder, out string output, out string error, IEnumerable<string> linkXmlFiles, /*UnityLinkerRunInformation*/ object runInformation)
         {
+            bool ret = StripAssembliesTo_Proxy(outputFolder, out output, out error, linkXmlFiles, runInformation);
+
             // TODO: 可以在这里把 Temp\StagingArea\Data\Managed\tempStrip 目录下的文件复制出来
             Debug.Log("StripAssembliesTo_Replace called");
-            return StripAssembliesTo_Proxy(outputFolder, out output, out error, linkXmlFiles, runInformation);
+            return ret;
         }
 
         [MethodImpl(MethodImplOptions.NoOptimization)]
