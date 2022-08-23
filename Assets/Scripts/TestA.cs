@@ -1,8 +1,10 @@
 ﻿using DotNetDetour;
 using MonoHook.Test;
 using System;
+using System.IO;
 using System.Reflection;
 using System.Text;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,7 +12,7 @@ namespace MonoHook
 {
     public unsafe class TestA   : MonoBehaviour
     {
-        public Button btn;
+        public Button btn, btnDelFile;
         public Text txtInfo;
         public Text txtTestVal;
 
@@ -21,7 +23,8 @@ namespace MonoHook
 
         private void Awake()
         {
-            btn.onClick.AddListener(OnBtnTestClick); 
+            btn.onClick.AddListener(OnBtnTestClick);
+            btnDelFile.onClick.AddListener(OnBtnTestDelFileClick);
         }
         private void Start()
         {
@@ -32,6 +35,28 @@ namespace MonoHook
             sb.AppendFormat("processorType:{0}\r\n", SystemInfo.processorType);
             sb.AppendLine();
             txtInfo.text = sb.ToString();
+        }
+
+        public void OnBtnTestDelFileClick()
+        {
+            string fileName = "test.txt";
+            string dirPath = "Assets/test_dir";
+            string filePath1 = $"Assets/{fileName}";
+            string filePath2 = $"{dirPath}/{fileName}";
+            {
+                File.Create(filePath1).Close();
+                File.Delete(filePath1);
+            }
+            {
+                Directory.CreateDirectory(dirPath);
+                File.Create(filePath2).Close();
+                Directory.Delete(dirPath, true);
+            }
+            {
+                File.Create(filePath1).Close();
+                AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+                AssetDatabase.DeleteAsset(filePath1);
+            }
         }
 
         public void OnBtnTestClick()
