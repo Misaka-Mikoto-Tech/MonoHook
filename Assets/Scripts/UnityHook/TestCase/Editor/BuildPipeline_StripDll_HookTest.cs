@@ -13,15 +13,22 @@ using System.Linq;
 namespace MonoHook.Test
 {
     // 有需求时可以打开，也可以手动按需注册Hook
-    //[InitializeOnLoad]
+    [InitializeOnLoad]
     public class BuildPipeline_StripDll_HookTest
     {
-        // 尝试 Hook 3个函数，至少一个被调用就可以达到要求
+        /// <summary>
+        /// 裁剪执行完毕的回调，可能会被调用多次，一般而言同一次打包只需要处理第一次回调
+        /// </summary>
+        public static Action<string, BuildPostProcessArgs, BeeDriverResult> OnAssemblyStripped;
+
+        // 尝试 Hook 4个函数，至少一个被调用就可以达到要求
+        private static MethodHook _hook_PostprocessBuildPlayer_CompleteBuild;
         private static MethodHook _hook_Default_PostProcess;
         private static MethodHook _hook_ReportBuildResults;
         private static MethodHook _hook_StripAssembliesTo;
 
-        struct BuildPostProcessArgs
+#region Fake Internal Structures
+        public struct BuildPostProcessArgs
         {
             public BuildTarget target;
             public int subTarget;
@@ -38,13 +45,69 @@ namespace MonoHook.Test
             internal /*RuntimeClassRegistry*/object usedClassRegistry;
         }
 
+        public sealed class BeeDriverResult
+        {
+            public /*NodeResult*/object[] NodeResults { get; set; }
+            public bool Success { get; set; }
+            public /*Message*/object[] BeeDriverMessages { get; set; }
+            public override string ToString() => Success.ToString();
+        }
+#endregion
+
         static BuildPipeline_StripDll_HookTest()
         {
             InstallHook();
+#if ENABLE_HOOK_TEST_CASE
+            OnAssemblyStripped = DemoStripCallback;
+#endif
+        }
+
+        /// <summary>
+        /// 示例裁剪回调函数
+        /// </summary>
+        /// <param name="outputFolder"></param>
+        /// <param name="args"></param>
+        /// <param name="result"></param>
+        static void DemoStripCallback(string outputFolder, BuildPostProcessArgs args, BeeDriverResult result)
+        {
+            if (outputFolder != null)
+                Debug.Log($"stripped outputFolder is:{outputFolder}");
+            else if (args.stagingAreaDataManaged != null)
+                Debug.Log($"stripped staging folder is:{args.stagingAreaDataManaged}");
+            else if (result != null)
+                Debug.Log($"stripped result is: {result.Success}");
+            else
+                Debug.Log("stripped test called");
         }
 
         public static void InstallHook()
         {
+            do
+            {
+                Type type = Type.GetType("UnityEditor.PostprocessBuildPlayer,UnityEditor, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
+                if (type == null)
+                {
+                    Debug.LogError($"can not find type: UnityEditor.PostprocessBuildPlayer");
+                    break;
+                }
+
+                MethodInfo miTarget = type.GetMethod("PostProcessCompletedBuild", BindingFlags.Static | BindingFlags.Public);
+
+                if (miTarget == null)
+                {
+                    Debug.LogError($"can not find method: UnityEditor.PostprocessBuildPlayer.PostProcessCompletedBuild");
+                    break;
+                }
+
+                MethodInfo miReplace = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(PostprocessBuildPlayer_CompleteBuild_Replace), BindingFlags.Static | BindingFlags.NonPublic);
+                MethodInfo miProxy = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(PostprocessBuildPlayer_CompleteBuild_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
+
+                _hook_PostprocessBuildPlayer_CompleteBuild = new MethodHook(miTarget, miReplace, miProxy);
+                _hook_PostprocessBuildPlayer_CompleteBuild.Install();
+
+                Debug.Log("Hook BuildPipeline_StripDll_HookTest.PostprocessBuildPlayer_CompleteBuild installed");
+            } while (false);
+
             do
             {
                 Type type = Type.GetType("UnityEditor.Modules.DefaultBuildPostprocessor,UnityEditor.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
@@ -63,8 +126,8 @@ namespace MonoHook.Test
                     break;
                 }
 
-                MethodInfo miReplace = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(PostProcess_Replace), BindingFlags.Static | BindingFlags.NonPublic);
-                MethodInfo miProxy = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(PostProcess_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
+                MethodInfo miReplace = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(Default_PostProcess_Replace), BindingFlags.Static | BindingFlags.NonPublic);
+                MethodInfo miProxy = typeof(BuildPipeline_StripDll_HookTest).GetMethod(nameof(Default_PostProcess_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
 
                 _hook_Default_PostProcess = new MethodHook(miTarget, miReplace, miProxy);
                 _hook_Default_PostProcess.Install();
@@ -125,17 +188,26 @@ namespace MonoHook.Test
 
         public static void UninstallHook()
         {
+            _hook_PostprocessBuildPlayer_CompleteBuild?.Uninstall();
             _hook_Default_PostProcess?.Uninstall();
             _hook_ReportBuildResults?.Uninstall();
             _hook_StripAssembliesTo?.Uninstall();
         }
 
-        static void PostProcess_Replace(object obj, BuildPostProcessArgs args, out /*BuildProperties*/ object outProperties)
+        static void PostprocessBuildPlayer_CompleteBuild_Replace(BuildPostProcessArgs args)
+        {
+            Debug.Log("PostprocessBuildPlayer_CompleteBuild_Replace called");
+
+            OnAssemblyStripped?.Invoke(null, args, null);
+            PostprocessBuildPlayer_CompleteBuild_Proxy(args);
+        }
+
+        static void Default_PostProcess_Replace(object obj, BuildPostProcessArgs args, out /*BuildProperties*/ object outProperties)
         {
             try
             {
                 // 注意：此函数中途可能会被 Unity throw Exception
-                PostProcess_Proxy(obj, args, out outProperties);
+                Default_PostProcess_Proxy(obj, args, out outProperties);
             }
             catch(Exception ex)
             {
@@ -143,15 +215,17 @@ namespace MonoHook.Test
             }
             finally
             {
-                // TODO: 可以在此把裁剪后的dll复制出来
-                Debug.LogError("PostProcess_Replace called");
+                Debug.Log("PostProcess_Replace called");
+                OnAssemblyStripped?.Invoke(null, args, null);
             }
         }
 
-        static void ReportBuildResults_Replace(object obj, /*BeeDriverResult*/ object result)
+        static void ReportBuildResults_Replace(object obj, BeeDriverResult result)
         {
             // TODO: 可以在这里把 Library\Bee\artifacts\WinPlayerBuildProgram\ManagedStripped 目录下的文件复制出来
-            Debug.LogError("ReportBuildResults_Replace called");
+            Debug.Log("ReportBuildResults_Replace called");
+
+            OnAssemblyStripped?.Invoke(null, default(BuildPostProcessArgs), result);
             ReportBuildResults_Proxy(obj, result);
         }
 
@@ -161,12 +235,21 @@ namespace MonoHook.Test
 
             // TODO: 可以在这里把 Temp\StagingArea\Data\Managed\tempStrip 目录下的文件复制出来
             Debug.Log("StripAssembliesTo_Replace called");
+
+            OnAssemblyStripped?.Invoke(outputFolder, default(BuildPostProcessArgs), null);
             return ret;
         }
 
 #region Proxy Methods
         [MethodImpl(MethodImplOptions.NoOptimization)]
-        static void PostProcess_Proxy(object obj, BuildPostProcessArgs args, out /*BuildProperties*/ object outProperties)
+        static void PostprocessBuildPlayer_CompleteBuild_Proxy(BuildPostProcessArgs args)
+        {
+            Debug.Log("dummy code" + 200);
+            Debug.Log(args.companyName);
+        }
+
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        static void Default_PostProcess_Proxy(object obj, BuildPostProcessArgs args, out /*BuildProperties*/ object outProperties)
         {
             Debug.Log("dummy code" + 100);
             outProperties = null;
