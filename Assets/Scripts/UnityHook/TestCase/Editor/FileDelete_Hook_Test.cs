@@ -12,41 +12,65 @@ using UnityEditor.Callbacks;
 
 namespace MonoHook.Test
 {
-    [InitializeOnLoad]
-
     public class FileDelete_Hook_Test
     {
-        static FileDelete_Hook_Test()
+        static MethodHook _File_Delete_Hook;
+        static MethodHook _Directory_Delete_Hook;
+        static MethodHook _AssetDatabase_DeleteAsset_Hook;
+        static MethodHook _AssetDatabase_DeleteAssetsCommon_Hook;
+
+        //[DidReloadScripts]
+        static void Install()
         {
             {
                 MethodInfo target = typeof(File).GetMethod("Delete");
                 MethodInfo replace = new Action<string>(File_Delete_Replace).Method;
                 MethodInfo proxy = new Action<string>(File_Delete_Proxy).Method;
-                if(target != null && replace != null && proxy != null)
-                    new MethodHook(target, replace, proxy).Install();
+                if (target != null && replace != null && proxy != null)
+                {
+                    _File_Delete_Hook = new MethodHook(target, replace, proxy);
+                    _File_Delete_Hook.Install();
+                }
 
             }
             {
-                MethodInfo target = (from mi in typeof(Directory).GetMethods() where mi.Name == "Delete" && mi.GetParameters().Length == 2 select mi).FirstOrDefault(); 
+                MethodInfo target = (from mi in typeof(Directory).GetMethods() where mi.Name == "Delete" && mi.GetParameters().Length == 2 select mi).FirstOrDefault();
                 MethodInfo replace = typeof(FileDelete_Hook_Test).GetMethod(nameof(Directory_Delete_Replace), BindingFlags.Static | BindingFlags.NonPublic);
                 MethodInfo proxy = typeof(FileDelete_Hook_Test).GetMethod(nameof(Directory_Delete_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
                 if (target != null && replace != null && proxy != null)
-                    new MethodHook(target, replace, proxy).Install();
+                {
+                    _Directory_Delete_Hook = new MethodHook(target, replace, proxy);
+                    _Directory_Delete_Hook.Install();
+                }
             }
             {
                 MethodInfo target = typeof(AssetDatabase).GetMethod("DeleteAsset", BindingFlags.Static | BindingFlags.Public);
                 MethodInfo replace = typeof(FileDelete_Hook_Test).GetMethod(nameof(AssetDatabase_DeleteAsset_Replace), BindingFlags.Static | BindingFlags.NonPublic);
                 MethodInfo proxy = typeof(FileDelete_Hook_Test).GetMethod(nameof(AssetDatabase_DeleteAsset_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
                 if (target != null && replace != null && proxy != null)
-                    new MethodHook(target, replace, proxy).Install();
+                {
+                    _AssetDatabase_DeleteAsset_Hook = new MethodHook(target, replace, proxy);
+                    _AssetDatabase_DeleteAsset_Hook.Install();
+                }
             }
             {
                 MethodInfo target = typeof(AssetDatabase).GetMethod("DeleteAssetsCommon", BindingFlags.Static | BindingFlags.NonPublic);
                 MethodInfo replace = typeof(FileDelete_Hook_Test).GetMethod(nameof(AssetDatabase_DeleteAssetsCommon_Replace), BindingFlags.Static | BindingFlags.NonPublic);
                 MethodInfo proxy = typeof(FileDelete_Hook_Test).GetMethod(nameof(AssetDatabase_DeleteAssetsCommon_Proxy), BindingFlags.Static | BindingFlags.NonPublic);
                 if (target != null && replace != null && proxy != null)
-                    new MethodHook(target, replace, proxy).Install();
+                {
+                    _AssetDatabase_DeleteAssetsCommon_Hook = new MethodHook(target, replace, proxy);
+                    _AssetDatabase_DeleteAssetsCommon_Hook.Install();
+                }
             }
+        }
+
+        static void Uninstall()
+        {
+            _File_Delete_Hook?.Uninstall();
+            _Directory_Delete_Hook?.Uninstall();
+            _AssetDatabase_DeleteAsset_Hook?.Uninstall();
+            _AssetDatabase_DeleteAssetsCommon_Hook?.Uninstall();
         }
 
         static void OnFileOrDirDelete(string path, string[] paths = null)

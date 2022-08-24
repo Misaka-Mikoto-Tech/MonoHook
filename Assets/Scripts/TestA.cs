@@ -1,12 +1,19 @@
 ﻿using DotNetDetour;
-using MonoHook.Test;
 using System;
 using System.IO;
 using System.Reflection;
 using System.Text;
-using UnityEditor;
+
 using UnityEngine;
 using UnityEngine.UI;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
+#if ENABLE_HOOK_TEST_CASE
+using MonoHook.Test;
+#endif
 
 namespace MonoHook
 {
@@ -16,7 +23,7 @@ namespace MonoHook
         public Text txtInfo;
         public Text txtTestVal;
 
-        #region test case
+#region test case
 #if ENABLE_HOOK_TEST_CASE
 
         private int _msgId;
@@ -39,6 +46,7 @@ namespace MonoHook
 
         public void OnBtnTestDelFileClick()
         {
+#if UNITY_EDITOR
             string fileName = "test.txt";
             string dirPath = "Assets/test_dir";
             string filePath1 = $"Assets/{fileName}";
@@ -57,6 +65,9 @@ namespace MonoHook
                 AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
                 AssetDatabase.DeleteAsset(filePath1);
             }
+#else
+            Debug.Log("disable DelFile Hook at runtime");
+#endif
         }
 
         public void OnBtnTestClick()
@@ -139,7 +150,7 @@ namespace MonoHook
             Debug.Log("Test End");
         }
 #endif
-        #endregion
+#endregion
     }
 }
 
