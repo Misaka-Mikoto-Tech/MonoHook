@@ -33,6 +33,20 @@ namespace MonoHook
                 *pDst_++ = *pSrc_++;
         }
 
+        public static void DisableWriteProtect()
+        {
+#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX                                         
+            pthread_jit_write_protect_np(0);
+#endif
+        }
+
+        public static void EnableWriteProtect()
+        {
+#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+            pthread_jit_write_protect_np(1);
+#endif
+        }
+
         /// <summary>
         /// set flags of address to `read write`
         /// </summary>
@@ -48,7 +62,6 @@ namespace MonoHook
 #elif UNITY_ANDROID
             SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
 #elif UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            pthread_jit_write_protect_np(0);
             SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_WRITE);
 #endif
         }
@@ -66,7 +79,7 @@ namespace MonoHook
              * 而 mac os 的保护属性控制是每个线程独立的
              */
 #if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            pthread_jit_write_protect_np(1);
+            SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_EXEC); // TODO 是否可能与 mono 的控制冲突？
 #endif
         }
 

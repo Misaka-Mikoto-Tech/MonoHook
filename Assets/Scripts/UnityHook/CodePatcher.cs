@@ -101,6 +101,7 @@ namespace MonoHook
 
         private void EnableAddrModifiable()
         {
+            HookUtils.DisableWriteProtect();
             HookUtils.SetAddrFlagsToRW(new IntPtr(_pTarget), _targetHeaderBackup.Length);
             HookUtils.SetAddrFlagsToRW(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
             FlushICache();
@@ -108,6 +109,7 @@ namespace MonoHook
 
         private void DisableAddrModifiable()
         {
+            HookUtils.EnableWriteProtect();
             HookUtils.SetAddrFlagsToRX(new IntPtr(_pTarget), _targetHeaderBackup.Length);
             HookUtils.SetAddrFlagsToRX(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
             FlushICache();
