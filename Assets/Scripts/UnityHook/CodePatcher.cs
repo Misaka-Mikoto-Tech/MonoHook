@@ -27,13 +27,18 @@ namespace MonoHook
         {
             BackupHeader();
             EnableAddrModifiable();
-            PatchTargetMethod();
-            PatchProxyMethod();
+            {
+                PatchTargetMethod();
+                PatchProxyMethod();
+            }
+            DisableAddrModifiable();
         }
 
         public void RemovePatch()
         {
+            EnableAddrModifiable();
             RestoreHeader();
+            DisableAddrModifiable();
         }
 
         protected void BackupHeader()
@@ -53,23 +58,18 @@ namespace MonoHook
             if (_targetHeaderBackup == null)
                 return;
 
-            HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
-
             fixed (void* ptr = _targetHeaderBackup)
                 HookUtils.MemCpy(_pTarget, ptr, _targetHeaderBackup.Length);
         }
 
         protected void PatchTargetMethod()
         {
-            HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
             FlushJmpCode(_pTarget, _pReplace);
         }
         protected void PatchProxyMethod()
         {
             if (_pProxy == null)
                 return;
-
-            HookUtils.FlushICache(_pProxy, _targetHeaderBackup.Length * 2);
 
             // copy target's code to proxy
             fixed (byte* ptr = _targetHeaderBackup)
@@ -80,6 +80,12 @@ namespace MonoHook
             long jmpTo      = (long)_pTarget + _targetHeaderBackup.Length;
 
             FlushJmpCode((void*)jmpFrom, (void*)jmpTo);
+        }
+
+        protected void FlushICache()
+        {
+            HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
+            HookUtils.FlushICache(_pProxy, _targetHeaderBackup.Length * 2);
         }
         protected abstract void FlushJmpCode(void* jmpFrom, void* jmpTo);
 
@@ -95,11 +101,16 @@ namespace MonoHook
 
         private void EnableAddrModifiable()
         {
-            if (!LDasm.IsIL2CPP())
-                return;
+            HookUtils.SetAddrFlagsToRW(new IntPtr(_pTarget), _targetHeaderBackup.Length);
+            HookUtils.SetAddrFlagsToRW(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
+            FlushICache();
+        }
 
-            HookUtils.SetAddrFlagsToRWE(new IntPtr(_pTarget), _targetHeaderBackup.Length);
-            HookUtils.SetAddrFlagsToRWE(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
+        private void DisableAddrModifiable()
+        {
+            HookUtils.SetAddrFlagsToRX(new IntPtr(_pTarget), _targetHeaderBackup.Length);
+            HookUtils.SetAddrFlagsToRX(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
+            FlushICache();
         }
     }
 

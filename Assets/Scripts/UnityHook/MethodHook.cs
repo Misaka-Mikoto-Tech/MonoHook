@@ -283,7 +283,7 @@ namespace MonoHook
         /// <returns></returns>
         private IntPtr GetFunctionAddr(MethodBase method)
         {
-            if(method == null)
+            if (method == null)
                 return IntPtr.Zero;
 
             if (!LDasm.IsIL2CPP())

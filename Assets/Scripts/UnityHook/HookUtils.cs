@@ -1,8 +1,5 @@
-﻿using DotNetDetour;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -37,28 +34,47 @@ namespace MonoHook
         }
 
         /// <summary>
-        /// set flags of address to `read write execute`
+        /// set flags of address to `read write`
         /// </summary>
-        public static void SetAddrFlagsToRWE(IntPtr ptr, int size)
+        public static void SetAddrFlagsToRW(IntPtr ptr, int size)
         {
             if (ptr == IntPtr.Zero)
                 return;
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-
             uint oldProtect;
             bool ret = VirtualProtect(ptr, (uint)size, Protection.PAGE_EXECUTE_READWRITE, out oldProtect);
             UnityEngine.Debug.Assert(ret);
-
-#elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-
+#elif UNITY_ANDROID
             SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
+#elif UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+            pthread_jit_write_protect_np(0);
+            SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_WRITE);
+#endif
+        }
 
+        /// <summary>
+        /// set flags of address to `read execute`
+        /// </summary>
+        public static void SetAddrFlagsToRX(IntPtr ptr, int size)
+        {
+            if (ptr == IntPtr.Zero)
+                return;
+            /*
+             * windows 和 linux(android) 内存页面属性是当前进程全局的，
+             * 不可在没有保存的前提下随意修改为只读，否则其它线程或代码可能在认为可写但实际不可写的情况下写入导致crash
+             * 而 mac os 的保护属性控制是每个线程独立的
+             */
+#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+            pthread_jit_write_protect_np(1);
 #endif
         }
 
         public static void FlushICache(void* code, int size)
         {
+            if (code == null)
+                return;
+
             flush_icache?.Invoke(code, size);
 
 #if ENABLE_HOOK_DEBUG
@@ -119,13 +135,13 @@ namespace MonoHook
             {
                 // never release, so save GCHandle is unnecessary
                 s_ptr_flush_icache_arm32 = GCHandle.Alloc(s_flush_icache_arm32, GCHandleType.Pinned).AddrOfPinnedObject().ToPointer();
-                SetAddrFlagsToRWE(new IntPtr(s_ptr_flush_icache_arm32), s_flush_icache_arm32.Length);
+                SetAddrFlagsToRW(new IntPtr(s_ptr_flush_icache_arm32), s_flush_icache_arm32.Length);
                 flush_icache = Marshal.GetDelegateForFunctionPointer<DelegateFlushICache>(new IntPtr(s_ptr_flush_icache_arm32));
             }
             else
             {
                 s_ptr_flush_icache_arm64 = GCHandle.Alloc(s_flush_icache_arm64, GCHandleType.Pinned).AddrOfPinnedObject().ToPointer();
-                SetAddrFlagsToRWE(new IntPtr(s_ptr_flush_icache_arm64), s_flush_icache_arm64.Length);
+                SetAddrFlagsToRW(new IntPtr(s_ptr_flush_icache_arm64), s_flush_icache_arm64.Length);
                 flush_icache = Marshal.GetDelegateForFunctionPointer<DelegateFlushICache>(new IntPtr(s_ptr_flush_icache_arm64));
             }
 
@@ -260,6 +276,11 @@ namespace MonoHook
             if (mprotect((IntPtr) startPage, (IntPtr) (endPage - startPage), prot) != 0)
                 throw new Win32Exception();
         }
+#endif
+
+#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+        [DllImport("pthread", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void pthread_jit_write_protect_np(int enabled);
 #endif
     }
 }
