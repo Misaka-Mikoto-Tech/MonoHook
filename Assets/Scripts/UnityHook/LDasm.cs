@@ -641,7 +641,15 @@ namespace DotNetDetour
             if(s_isArm.HasValue)
                 return s_isArm.Value;
 
-            s_isArm = UnityEngine.SystemInfo.processorType.Contains("ARM"); // TODO 检查苹果M系列笔记本的返回值
+            string processorType = UnityEngine.SystemInfo.processorType;
+
+            /*
+             * appple M 系列
+             * SystemInfo.processorType 返回值为: Apple M1 Max, Apple M2 等
+             * SystemInfo.operatingSystem 返回值为: Mac OS X xx.x.x
+             * 
+             */
+            s_isArm = processorType.Contains("ARM") || processorType.Contains("Apple M");
 
             return s_isArm.Value;
         }
