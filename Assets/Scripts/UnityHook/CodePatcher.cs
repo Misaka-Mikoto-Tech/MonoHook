@@ -26,6 +26,9 @@ namespace MonoHook
         public void ApplyPatch()
         {
             BackupHeader();
+            if (HookUtils.CheckOSXMemWritable(new IntPtr(_pTarget), _targetHeaderBackup.Length))
+                throw new Exception($"OSX mem wriable before patch, it's unexpected, hook canceled");
+
             EnableAddrModifiable();
             {
                 PatchTargetMethod();
@@ -36,6 +39,12 @@ namespace MonoHook
 
         public void RemovePatch()
         {
+            if (_targetHeaderBackup == null)
+                return;
+
+            if (HookUtils.CheckOSXMemWritable(new IntPtr(_pTarget), _targetHeaderBackup.Length))
+                throw new Exception($"OSX mem wriable before patch, it's unexpected, remove hook canceled");
+
             EnableAddrModifiable();
             RestoreHeader();
             DisableAddrModifiable();

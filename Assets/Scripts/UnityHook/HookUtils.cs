@@ -12,11 +12,18 @@ namespace MonoHook
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         delegate void DelegateFlushICache(void* code, int size); // delegate * unmanaged[Cdecl] <void, byte, uint> native_flush_cache_fun_ptr; // unsupported at C# 8.0
 
+        static bool jit_write_protect_supported;
         static DelegateFlushICache flush_icache;
         private static readonly long _Pagesize;
+        
 
         static HookUtils()
         {
+#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+            jit_write_protect_supported = pthread_jit_write_protect_supported_np() != 0;
+#else
+            jit_write_protect_supported = false;
+#endif
             PropertyInfo p_SystemPageSize = typeof(Environment).GetProperty("SystemPageSize");
             if (p_SystemPageSize == null)
                 throw new NotSupportedException("Unsupported runtime");
@@ -33,9 +40,39 @@ namespace MonoHook
                 *pDst_++ = *pSrc_++;
         }
 
+        /// <summary>
+        /// 检查OSX内存是否可写，
+        /// 如果Patch前已经可写说明mono的jit正在写入此块内存,我们的逻辑被嵌套在一个jit函数内，
+        /// 这是异常情况，我们不能继续操作了
+        /// </summary>
+        /// <param name="ptr"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public static bool CheckOSXMemWritable(IntPtr ptr, int size)
+        {
+            bool memWritable = false;
+#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+            
+            if(jit_write_protect_supported)
+            {
+                try
+                {
+                    // osx 下开启jit_write_protect时没有执行 pthread_jit_write_protect_np(0) 前此函数不可能调用成功
+                    SetMemPerms(ptr,(ulong)size, MmapProts.PROT_READ | MmapProts.PROT_WRITE);
+                    memWritable = true;
+                }
+                catch(Exception ex)
+                {
+                    memWritable = false;
+                }
+            }
+#endif
+            return memWritable;
+        }
+
         public static void DisableWriteProtect()
         {
-#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX                                         
+#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
             pthread_jit_write_protect_np(0);
 #endif
         }
@@ -287,11 +324,14 @@ namespace MonoHook
             long endPage = requiredAddr.Value;
 
             if (mprotect((IntPtr) startPage, (IntPtr) (endPage - startPage), prot) != 0)
-                throw new Win32Exception();
+                throw new Exception($"mprotect with prot:{prot} fail!");
         }
 #endif
 
 #if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+        [DllImport("pthread", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int pthread_jit_write_protect_supported_np();
+
         [DllImport("pthread", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
         private static extern void pthread_jit_write_protect_np(int enabled);
 #endif
