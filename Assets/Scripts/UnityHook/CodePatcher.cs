@@ -26,15 +26,10 @@ namespace MonoHook
         public void ApplyPatch()
         {
             BackupHeader();
-            if (HookUtils.CheckOSXMemWritable(new IntPtr(_pTarget), _targetHeaderBackup.Length))
-                throw new Exception($"OSX mem wriable before patch, it's unexpected, hook canceled");
-
             EnableAddrModifiable();
-            {
-                PatchTargetMethod();
-                PatchProxyMethod();
-            }
-            DisableAddrModifiable();
+            PatchTargetMethod();
+            PatchProxyMethod();
+            FlushICache();
         }
 
         public void RemovePatch()
@@ -42,12 +37,9 @@ namespace MonoHook
             if (_targetHeaderBackup == null)
                 return;
 
-            if (HookUtils.CheckOSXMemWritable(new IntPtr(_pTarget), _targetHeaderBackup.Length))
-                throw new Exception($"OSX mem wriable before patch, it's unexpected, remove hook canceled");
-
             EnableAddrModifiable();
             RestoreHeader();
-            DisableAddrModifiable();
+            FlushICache();
         }
 
         protected void BackupHeader()
@@ -67,13 +59,13 @@ namespace MonoHook
             if (_targetHeaderBackup == null)
                 return;
 
-            fixed (void* ptr = _targetHeaderBackup)
-                HookUtils.MemCpy(_pTarget, ptr, _targetHeaderBackup.Length);
+            HookUtils.MemCpy_Jit(_pTarget, _targetHeaderBackup);
         }
 
         protected void PatchTargetMethod()
         {
-            FlushJmpCode(_pTarget, _pReplace);
+            byte[] buff = GenJmpCode(_pTarget, _pReplace);
+            HookUtils.MemCpy_Jit(_pTarget, buff);
         }
         protected void PatchProxyMethod()
         {
@@ -81,14 +73,14 @@ namespace MonoHook
                 return;
 
             // copy target's code to proxy
-            fixed (byte* ptr = _targetHeaderBackup)
-                HookUtils.MemCpy(_pProxy, ptr, _targetHeaderBackup.Length);
+            HookUtils.MemCpy_Jit(_pProxy, _targetHeaderBackup);
 
             // jmp to target's new position
             long jmpFrom    = (long)_pProxy + _targetHeaderBackup.Length;
             long jmpTo      = (long)_pTarget + _targetHeaderBackup.Length;
 
-            FlushJmpCode((void*)jmpFrom, (void*)jmpTo);
+            byte[] buff = GenJmpCode((void*)jmpFrom, (void*)jmpTo);
+            HookUtils.MemCpy_Jit((void*)jmpFrom, buff);
         }
 
         protected void FlushICache()
@@ -96,7 +88,7 @@ namespace MonoHook
             HookUtils.FlushICache(_pTarget, _targetHeaderBackup.Length);
             HookUtils.FlushICache(_pProxy, _targetHeaderBackup.Length * 2);
         }
-        protected abstract void FlushJmpCode(void* jmpFrom, void* jmpTo);
+        protected abstract byte[] GenJmpCode(void* jmpFrom, void* jmpTo);
 
 #if ENABLE_HOOK_DEBUG
         protected string PrintAddrs()
@@ -110,18 +102,8 @@ namespace MonoHook
 
         private void EnableAddrModifiable()
         {
-            HookUtils.DisableWriteProtect();
-            HookUtils.SetAddrFlagsToRW(new IntPtr(_pTarget), _targetHeaderBackup.Length);
-            HookUtils.SetAddrFlagsToRW(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
-            FlushICache();
-        }
-
-        private void DisableAddrModifiable()
-        {
-            HookUtils.EnableWriteProtect();
-            HookUtils.SetAddrFlagsToRX(new IntPtr(_pTarget), _targetHeaderBackup.Length);
-            HookUtils.SetAddrFlagsToRX(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
-            FlushICache();
+            HookUtils.SetAddrFlagsToRWX(new IntPtr(_pTarget), _targetHeaderBackup.Length);
+            HookUtils.SetAddrFlagsToRWX(new IntPtr(_pProxy), _targetHeaderBackup.Length + _jmpCodeSize);
         }
     }
 
@@ -134,14 +116,19 @@ namespace MonoHook
 
         public CodePatcher_x86(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy, s_jmpCode.Length) { }
 
-        protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
+        protected override unsafe byte[] GenJmpCode(void* jmpFrom, void* jmpTo)
         {
+            byte[] ret = new byte[s_jmpCode.Length];
             int val = (int)jmpTo - (int)jmpFrom - 5;
 
-            byte* ptr       = (byte*)jmpFrom;
-            *ptr            = 0xE9;
-            int* pOffset    = (int*)(ptr + 1);
-            *pOffset        = val;
+            fixed(void * p = &ret[0])
+            {
+                byte* ptr = (byte*)p;
+                *ptr = 0xE9;
+                int* pOffset = (int*)(ptr + 1);
+                *pOffset = val;
+            }
+            return ret;
         }
     }
 
@@ -173,15 +160,21 @@ namespace MonoHook
         //};
 
         public CodePatcher_x64_far(IntPtr target, IntPtr replace, IntPtr proxy) : base(target, replace, proxy, s_jmpCode.Length) { }
-        protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
+        protected override unsafe byte[] GenJmpCode(void* jmpFrom, void* jmpTo)
         {
-            byte* ptr = (byte*)jmpFrom;
-            *ptr++ = 0x48;
-            *ptr++ = 0xB8;
-            *(long*)ptr = (long)jmpTo;
-            ptr += 8;
-            *ptr++ = 0x50;
-            *ptr++ = 0xC3;
+            byte[] ret = new byte[s_jmpCode.Length];
+
+            fixed (void* p = &ret[0])
+            {
+                byte* ptr = (byte*)p;
+                *ptr++ = 0x48;
+                *ptr++ = 0xB8;
+                *(long*)ptr = (long)jmpTo;
+                ptr += 8;
+                *ptr++ = 0x50;
+                *ptr++ = 0xC3;
+            }
+            return ret;
         }
     }
 
@@ -202,15 +195,20 @@ namespace MonoHook
 #endif
         }
 
-        protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
+        protected override unsafe byte[] GenJmpCode(void* jmpFrom, void* jmpTo)
         {
+            byte[] ret = new byte[s_jmpCode.Length];
             int val = ((int)jmpTo - (int)jmpFrom) / 4 - 2;
 
-            byte* ptr = (byte*)jmpFrom;
-            *ptr++ = (byte)val;
-            *ptr++ = (byte)(val >> 8);
-            *ptr++ = (byte)(val >> 16);
-            *ptr++ = 0xEA;
+            fixed (void* p = &ret[0])
+            {
+                byte* ptr = (byte*)p;
+                *ptr++ = (byte)val;
+                *ptr++ = (byte)(val >> 8);
+                *ptr++ = (byte)(val >> 16);
+                *ptr++ = 0xEA;
+            }
+            return ret;
         }
     }
 
@@ -232,11 +230,17 @@ namespace MonoHook
 #endif
         }
 
-        protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
+        protected override unsafe byte[] GenJmpCode(void* jmpFrom, void* jmpTo)
         {
-            uint* ptr = (uint*)jmpFrom;
-            *ptr++ = 0xE51FF004;
-            *ptr = (uint)jmpTo;
+            byte[] ret = new byte[s_jmpCode.Length];
+
+            fixed (void* p = &ret[0])
+            {
+                uint* ptr = (uint*)p;
+                *ptr++ = 0xE51FF004;
+                *ptr = (uint)jmpTo;
+            }
+            return ret;
         }
     }
 
@@ -265,20 +269,25 @@ namespace MonoHook
 #endif
         }
 
-        protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
+        protected override unsafe byte[] GenJmpCode(void* jmpFrom, void* jmpTo)
         {
+            byte[] ret = new byte[s_jmpCode.Length];
             int val = (int)((long)jmpTo - (long)jmpFrom) / 4;
 
-            byte* ptr = (byte*)jmpFrom;
-            *ptr++ = (byte)val;
-            *ptr++ = (byte)(val >> 8);
-            *ptr++ = (byte)(val >> 16);
+            fixed (void* p = &ret[0])
+            {
+                byte* ptr = (byte*)p;
+                *ptr++ = (byte)val;
+                *ptr++ = (byte)(val >> 8);
+                *ptr++ = (byte)(val >> 16);
 
-            byte last = (byte)(val >> 24);
-            last &= 0b11;
-            last |= 0x14;
+                byte last = (byte)(val >> 24);
+                last &= 0b11;
+                last |= 0x14;
 
-            *ptr = last;
+                *ptr = last;
+            }
+            return ret;
         }
     }
 
@@ -303,7 +312,7 @@ namespace MonoHook
         {
         }
 
-        protected override unsafe void FlushJmpCode(void* jmpFrom, void* jmpTo)
+        protected override unsafe byte[] GenJmpCode(void* jmpFrom, void* jmpTo)
         {
             throw new NotImplementedException();
         }

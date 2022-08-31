@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !(UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX)
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -12,18 +13,11 @@ namespace MonoHook
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         delegate void DelegateFlushICache(void* code, int size); // delegate * unmanaged[Cdecl] <void, byte, uint> native_flush_cache_fun_ptr; // unsupported at C# 8.0
 
-        static bool jit_write_protect_supported;
         static DelegateFlushICache flush_icache;
         private static readonly long _Pagesize;
         
-
         static HookUtils()
         {
-#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            jit_write_protect_supported = pthread_jit_write_protect_supported_np() != 0;
-#else
-            jit_write_protect_supported = false;
-#endif
             PropertyInfo p_SystemPageSize = typeof(Environment).GetProperty("SystemPageSize");
             if (p_SystemPageSize == null)
                 throw new NotSupportedException("Unsupported runtime");
@@ -40,54 +34,18 @@ namespace MonoHook
                 *pDst_++ = *pSrc_++;
         }
 
-        /// <summary>
-        /// 检查OSX内存是否可写，
-        /// 如果Patch前已经可写说明mono的jit正在写入此块内存,我们的逻辑被嵌套在一个jit函数内，
-        /// 这是异常情况，我们不能继续操作了
-        /// </summary>
-        /// <param name="ptr"></param>
-        /// <param name="size"></param>
-        /// <returns></returns>
-        public static bool CheckOSXMemWritable(IntPtr ptr, int size)
+        public static void MemCpy_Jit(void* pDst, byte[] src)
         {
-            bool memWritable = false;
-#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            
-            if(jit_write_protect_supported)
+            fixed (void* p = &src[0])
             {
-                try
-                {
-                    // osx 下开启jit_write_protect时没有执行 pthread_jit_write_protect_np(0) 前此函数不可能调用成功
-                    SetMemPerms(ptr,(ulong)size, MmapProts.PROT_READ | MmapProts.PROT_WRITE);
-                    memWritable = true;
-                }
-                catch(Exception ex)
-                {
-                    memWritable = false;
-                }
+                MemCpy(pDst, p, src.Length);
             }
-#endif
-            return memWritable;
-        }
-
-        public static void DisableWriteProtect()
-        {
-#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            pthread_jit_write_protect_np(0);
-#endif
-        }
-
-        public static void EnableWriteProtect()
-        {
-#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            pthread_jit_write_protect_np(1);
-#endif
         }
 
         /// <summary>
-        /// set flags of address to `read write`
+        /// set flags of address to `read write execute`
         /// </summary>
-        public static void SetAddrFlagsToRW(IntPtr ptr, int size)
+        public static void SetAddrFlagsToRWX(IntPtr ptr, int size)
         {
             if (ptr == IntPtr.Zero)
                 return;
@@ -96,27 +54,8 @@ namespace MonoHook
             uint oldProtect;
             bool ret = VirtualProtect(ptr, (uint)size, Protection.PAGE_EXECUTE_READWRITE, out oldProtect);
             UnityEngine.Debug.Assert(ret);
-#elif UNITY_ANDROID
+#else
             SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_WRITE | MmapProts.PROT_EXEC);
-#elif UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_WRITE);
-#endif
-        }
-
-        /// <summary>
-        /// set flags of address to `read execute`
-        /// </summary>
-        public static void SetAddrFlagsToRX(IntPtr ptr, int size)
-        {
-            if (ptr == IntPtr.Zero)
-                return;
-            /*
-             * windows 和 linux(android) 内存页面属性是当前进程全局的，
-             * 不可在没有保存的前提下随意修改为只读，否则其它线程或代码可能在认为可写但实际不可写的情况下写入导致crash
-             * 而 mac os 的保护属性控制是每个线程独立的
-             */
-#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-            SetMemPerms(ptr,(ulong)size,MmapProts.PROT_READ | MmapProts.PROT_EXEC); // TODO 是否可能与 mono 的控制冲突？
 #endif
         }
 
@@ -185,13 +124,13 @@ namespace MonoHook
             {
                 // never release, so save GCHandle is unnecessary
                 s_ptr_flush_icache_arm32 = GCHandle.Alloc(s_flush_icache_arm32, GCHandleType.Pinned).AddrOfPinnedObject().ToPointer();
-                SetAddrFlagsToRW(new IntPtr(s_ptr_flush_icache_arm32), s_flush_icache_arm32.Length);
+                SetAddrFlagsToRWX(new IntPtr(s_ptr_flush_icache_arm32), s_flush_icache_arm32.Length);
                 flush_icache = Marshal.GetDelegateForFunctionPointer<DelegateFlushICache>(new IntPtr(s_ptr_flush_icache_arm32));
             }
             else
             {
                 s_ptr_flush_icache_arm64 = GCHandle.Alloc(s_flush_icache_arm64, GCHandleType.Pinned).AddrOfPinnedObject().ToPointer();
-                SetAddrFlagsToRW(new IntPtr(s_ptr_flush_icache_arm64), s_flush_icache_arm64.Length);
+                SetAddrFlagsToRWX(new IntPtr(s_ptr_flush_icache_arm64), s_flush_icache_arm64.Length);
                 flush_icache = Marshal.GetDelegateForFunctionPointer<DelegateFlushICache>(new IntPtr(s_ptr_flush_icache_arm64));
             }
 
@@ -304,7 +243,7 @@ namespace MonoHook
         [DllImport("kernel32")]
         public static extern bool VirtualProtect(IntPtr lpAddress, uint dwSize, Protection flNewProtect, out uint lpflOldProtect);
 
-#elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+#else
         [Flags]
         public enum MmapProts : int {
             PROT_READ       = 0x1,
@@ -327,14 +266,7 @@ namespace MonoHook
                 throw new Exception($"mprotect with prot:{prot} fail!");
         }
 #endif
-
-#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-        [DllImport("pthread", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
-        private static extern int pthread_jit_write_protect_supported_np();
-
-        [DllImport("pthread", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
-        private static extern void pthread_jit_write_protect_np(int enabled);
-#endif
     }
 }
 
+#endif
