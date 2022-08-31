@@ -94,7 +94,7 @@ namespace MonoHook
         [DllImport("pthread", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
         private static extern int pthread_jit_write_protect_supported_np();
 
-        [DllImport("libMonoHookUtils_Silicon", EntryPoint = "_memcpy_jit", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("libMonoHookUtils_OSX", SetLastError = true, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr memcpy_jit(IntPtr dst, IntPtr src, int len);
     }
 }
