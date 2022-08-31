@@ -1,4 +1,4 @@
-#if (UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX)
+﻿#if (UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX)
 using System;
 using System.Collections.Generic;
 using System.Reflection;

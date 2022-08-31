@@ -1,4 +1,4 @@
-using DotNetDetour;
+ï»¿using DotNetDetour;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -133,7 +133,7 @@ namespace MonoHook
     }
 
     /// <summary>
-    /// x64ÏÂ2G ÄÚµÄÌø×ª
+    /// x64ä¸‹2G å†…çš„è·³è½¬
     /// </summary>
     public unsafe class CodePatcher_x64_near : CodePatcher_x86 // x64_near pathcer code is same to x86
     {
@@ -141,13 +141,13 @@ namespace MonoHook
     }
 
     /// <summary>
-    /// x64ÏÂ¾àÀë³¬¹ı2GµÄÌø×ª
+    /// x64ä¸‹è·ç¦»è¶…è¿‡2Gçš„è·³è½¬
     /// </summary>
     public unsafe class CodePatcher_x64_far : CodePatcher
     {
         protected static readonly byte[] s_jmpCode = new byte[] // 12 bytes
         {
-            // ÓÉÓÚ rax »á±»º¯Êı×÷Îª·µ»ØÖµĞŞ¸Ä£¬²¢ÇÒ²»»á±»×öÎª²ÎÊıÊ¹ÓÃ£¬Òò´ËĞŞ¸ÄÊÇ°²È«µÄ
+            // ç”±äº rax ä¼šè¢«å‡½æ•°ä½œä¸ºè¿”å›å€¼ä¿®æ”¹ï¼Œå¹¶ä¸”ä¸ä¼šè¢«åšä¸ºå‚æ•°ä½¿ç”¨ï¼Œå› æ­¤ä¿®æ”¹æ˜¯å®‰å…¨çš„
             0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,         // mov rax, <jmpTo>
             0x50,                                                               // push rax
             0xC3                                                                // ret
@@ -245,7 +245,7 @@ namespace MonoHook
     }
 
     /// <summary>
-    /// arm64 ÏÂ ¡À128MB ·¶Î§ÄÚµÄÌø×ª
+    /// arm64 ä¸‹ Â±128MB èŒƒå›´å†…çš„è·³è½¬
     /// </summary>
     public unsafe class CodePatcher_arm64_near : CodePatcher
     {
@@ -292,11 +292,11 @@ namespace MonoHook
     }
 
     /// <summary>
-    /// arm64 Ô¶¾àÀëÌø×ª
+    /// arm64 è¿œè·ç¦»è·³è½¬
     /// </summary>
     public unsafe class CodePatcher_arm64_far : CodePatcher
     {
-        private static readonly byte[] s_jmpCode = new byte[]    // 20 bytes(×Ö½ÚÊı¹ı¶à£¬Ì«Î£ÏÕÁË£¬²»½¨ÒéÊ¹ÓÃ)
+        private static readonly byte[] s_jmpCode = new byte[]    // 20 bytes(å­—èŠ‚æ•°è¿‡å¤šï¼Œå¤ªå±é™©äº†ï¼Œä¸å»ºè®®ä½¿ç”¨)
         {
             /*
              * ADR: https://developer.arm.com/documentation/ddi0596/2021-09/Base-Instructions/ADR--Form-PC-relative-address-

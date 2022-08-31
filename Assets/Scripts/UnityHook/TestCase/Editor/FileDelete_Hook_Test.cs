@@ -1,4 +1,4 @@
-#if ENABLE_HOOK_TEST_CASE
+ï»¿#if ENABLE_HOOK_TEST_CASE
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -75,7 +75,7 @@ namespace MonoHook.Test
 
         static void OnFileOrDirDelete(string path, string[] paths = null)
         {
-            // ÎÄ¼şÉ¾³ı»Øµ÷, ¿ÉÒÔÔÚ´ËÏÂ¶Ïµã»òÕßĞ´×Ô¶¨ÒåÂß¼­
+            // æ–‡ä»¶åˆ é™¤å›è°ƒ, å¯ä»¥åœ¨æ­¤ä¸‹æ–­ç‚¹æˆ–è€…å†™è‡ªå®šä¹‰é€»è¾‘
             if (paths == null)
                 Debug.Log($"File will delete: {path}");
             else
