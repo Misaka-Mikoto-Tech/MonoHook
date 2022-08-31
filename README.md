@@ -8,7 +8,7 @@
 * 使用方便，在C#内定义签名与原始方法相同的两个方法注册后即可生效。
 
 ## 支持平台
-* Editor (Windows)
+* Editor (Windows, Mac Intel/Silicon)
 * Android mono/il2cpp(armv7a, armv8a)
 * Windows mono/il2cpp(x86, x64)
 
