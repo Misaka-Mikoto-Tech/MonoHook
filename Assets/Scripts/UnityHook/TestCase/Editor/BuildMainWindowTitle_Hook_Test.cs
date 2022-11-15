@@ -1,4 +1,4 @@
-#if ENABLE_HOOK_TEST_CASE
+ï»¿#if ENABLE_HOOK_TEST_CASE
 #if UNITY_EDITOR
 using System;
 using System.Collections;
@@ -33,7 +33,7 @@ namespace MonoHook.Test
         private static string BuildMainWindowTitle()
         {
             string newTitle = BuildMainWindowTitleProxy();
-            Debug.Log($"½«ÒªÉèÖÃĞÂ´°¿Ú±êÌâÎª: {newTitle}");
+            Debug.Log($"å°†è¦è®¾ç½®æ–°çª—å£æ ‡é¢˜ä¸º: {newTitle}");
             return newTitle;
         }
 
