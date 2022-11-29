@@ -108,11 +108,12 @@ namespace MonoHook
         /// <param name="targetMethod">需要替换的目标方法</param>
         /// <param name="replacementMethod">准备好的替换方法</param>
         /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
-        public MethodHook(MethodBase targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod)
+        public MethodHook(MethodBase targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod, string data = "")
         {
             this.targetMethod       = targetMethod;
             this.replacementMethod  = replacementMethod;
             this.proxyMethod        = proxyMethod;
+            this.data = data;
 
             CheckMethod();
         }
