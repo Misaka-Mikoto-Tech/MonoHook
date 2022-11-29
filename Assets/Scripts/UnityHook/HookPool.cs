@@ -55,6 +55,16 @@ namespace MonoHook
             _hooks.Clear();
         }
 
+        public static void UninstallByData(string data)
+        {
+            var list = _hooks.Values.ToList();
+            foreach (var hook in list)
+            {
+                if(hook.data == data)
+                    hook.Uninstall();
+            }
+        }
+
         public static List<MethodHook> GetAllHooks()
         {
             return _hooks.Values.ToList();

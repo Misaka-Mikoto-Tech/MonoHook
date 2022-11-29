@@ -71,6 +71,7 @@ namespace MonoHook
     /// </summary>
     public unsafe class MethodHook
     {
+        public string data;
         public bool isHooked { get; private set; }
         public bool isPlayModeHook { get; private set; }
 
@@ -260,6 +261,11 @@ namespace MonoHook
 
             if (proxyMethod != null && _proxyPtr == null)
                 return false;
+
+            if(_replacementPtr == _targetPtr)
+            {
+                throw new Exception("the addresses of target method and replacement method can not be same");
+            }
 
             if (LDasm.IsThumb(_targetPtr) || LDasm.IsThumb(_replacementPtr))
             {
