@@ -71,13 +71,13 @@ namespace MonoHook
     /// </summary>
     public unsafe class MethodHook
     {
-        public string data;
+        public string tag;
         public bool isHooked { get; private set; }
         public bool isPlayModeHook { get; private set; }
 
         public MethodBase targetMethod { get; private set; }       // 需要被hook的目标方法
-        public MethodInfo replacementMethod { get; private set; }  // 被hook后的替代方法
-        public MethodInfo proxyMethod { get; private set; }        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
+        public MethodBase replacementMethod { get; private set; }  // 被hook后的替代方法
+        public MethodBase proxyMethod { get; private set; }        // 目标方法的代理方法(可以通过此方法调用被hook后的原方法)
 
         private IntPtr _targetPtr;          // 目标方法被 jit 后的地址指针
         private IntPtr _replacementPtr;
@@ -108,12 +108,12 @@ namespace MonoHook
         /// <param name="targetMethod">需要替换的目标方法</param>
         /// <param name="replacementMethod">准备好的替换方法</param>
         /// <param name="proxyMethod">如果还需要调用原始目标方法，可以通过此参数的方法调用，如果不需要可以填 null</param>
-        public MethodHook(MethodBase targetMethod, MethodInfo replacementMethod, MethodInfo proxyMethod, string data = "")
+        public MethodHook(MethodBase targetMethod, MethodBase replacementMethod, MethodBase proxyMethod, string data = "")
         {
             this.targetMethod       = targetMethod;
             this.replacementMethod  = replacementMethod;
             this.proxyMethod        = proxyMethod;
-            this.data = data;
+            this.tag = data;
 
             CheckMethod();
         }
@@ -265,7 +265,7 @@ namespace MonoHook
 
             if(_replacementPtr == _targetPtr)
             {
-                throw new Exception("the addresses of target method and replacement method can not be same");
+                throw new Exception($"the addresses of target method {targetMethod.Name} and replacement method {replacementMethod.Name} can not be same");
             }
 
             if (LDasm.IsThumb(_targetPtr) || LDasm.IsThumb(_replacementPtr))

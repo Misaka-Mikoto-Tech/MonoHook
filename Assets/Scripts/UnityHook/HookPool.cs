@@ -55,12 +55,12 @@ namespace MonoHook
             _hooks.Clear();
         }
 
-        public static void UninstallByData(string data)
+        public static void UninstallByTag(string tag)
         {
             var list = _hooks.Values.ToList();
             foreach (var hook in list)
             {
-                if(hook.data == data)
+                if(hook.tag == tag)
                     hook.Uninstall();
             }
         }
