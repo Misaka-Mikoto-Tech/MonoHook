@@ -126,7 +126,7 @@ namespace MonoHook
             if (isHooked)
                 return;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && !UNITY_2020_3_OR_NEWER
             if (s_fi_GUISkin_current.GetValue(null) != null)
                 DoInstall();
             else

@@ -9,6 +9,11 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
 using System.Linq;
+using UnityEditor.Build.Reporting;
+using System.IO;
+using System.Xml;
+using System.Diagnostics;
+using Debug = UnityEngine.Debug;
 
 namespace MonoHook.Test
 {
@@ -56,10 +61,54 @@ namespace MonoHook.Test
 
         static BuildPipeline_StripDll_HookTest()
         {
+            GenBatchFile();
             InstallHook();
-#if ENABLE_HOOK_TEST_CASE
             OnAssemblyStripped = DemoStripCallback;
-#endif
+        }
+
+        [MenuItem("Tools/Build_HookTest")]
+        static void BuildPlayer()
+        {
+            string buildDir = "WinBuild";
+            if (Directory.Exists(buildDir))
+                Directory.Delete(buildDir, true);
+            Directory.CreateDirectory(buildDir);
+
+            BuildPlayerOptions opt = new BuildPlayerOptions();
+            opt.scenes = new string[] { "Assets/Scenes/SampleScene5+.unity" };
+            opt.locationPathName = $"{buildDir}/MonoHook.exe";
+            opt.targetGroup = BuildTargetGroup.Standalone;
+            opt.target = BuildTarget.StandaloneWindows64;
+            opt.options = BuildOptions.Development;
+
+            Debug.Log("begin build player");
+            BuildReport report = BuildPipeline.BuildPlayer(opt);
+            if (report.summary.result != BuildResult.Succeeded)
+            {
+                foreach(BuildStep step in report.steps)
+                {
+                    foreach(var msg in step.messages)
+                    {
+                        if (msg.type == LogType.Error)
+                            Debug.LogError(msg.content);
+                    }
+                }
+            }
+            Debug.Log("end build player");
+        }
+
+        /// <summary>
+        /// 生成用来测试batchMode打包的批处理文件
+        /// </summary>
+        static void GenBatchFile()
+        {
+            string format = @"SET UNITY_PATH=""{0}""
+SET PROJECT_PATH=""{1}""
+
+%UNITY_PATH% -nographics -batchMode -projectPath %PROJECT_PATH% -executeMethod MonoHook.Test.BuildPipeline_StripDll_HookTest.BuildPlayer -quit -logFile %PROJECT_PATH%\logs\build_player.log
+pause";
+            string content = string.Format(format, Process.GetCurrentProcess().MainModule.FileName, Environment.CurrentDirectory);
+            File.WriteAllText("BuildPlayer.bat", content);
         }
 
         /// <summary>
