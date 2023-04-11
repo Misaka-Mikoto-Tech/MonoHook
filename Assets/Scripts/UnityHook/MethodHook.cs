@@ -85,7 +85,7 @@ namespace MonoHook
 
         private CodePatcher _codePatcher;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && !UNITY_2020_3_OR_NEWER
         /// <summary>
         /// call `MethodInfo.MethodHandle.GetFunctionPointer()` 
         /// will visit static class `UnityEditor.IMGUI.Controls.TreeViewGUI.Styles` and invoke its static constructor,
@@ -97,7 +97,7 @@ namespace MonoHook
 
         static MethodHook()
         {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && !UNITY_2020_3_OR_NEWER
             s_fi_GUISkin_current = typeof(GUISkin).GetField("current", BindingFlags.Static | BindingFlags.NonPublic);
 #endif
         }
@@ -358,7 +358,7 @@ namespace MonoHook
             }
         }
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && !UNITY_2020_3_OR_NEWER
         private void OnEditorUpdate()
         {
             if (s_fi_GUISkin_current.GetValue(null) != null)
