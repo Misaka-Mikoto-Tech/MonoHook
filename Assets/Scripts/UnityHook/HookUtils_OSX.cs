@@ -16,7 +16,11 @@ namespace MonoHook
 
         static HookUtils()
         {
-            jit_write_protect_supported = pthread_jit_write_protect_supported_np() != 0;
+            try
+            {
+                jit_write_protect_supported = pthread_jit_write_protect_supported_np() != 0;
+            }
+            catch { }
 
             PropertyInfo p_SystemPageSize = typeof(Environment).GetProperty("SystemPageSize");
             if (p_SystemPageSize == null)
@@ -35,6 +39,16 @@ namespace MonoHook
 
         public static void MemCpy_Jit(void* pDst, byte[] src)
         {
+            if (!jit_write_protect_supported)
+            {
+                fixed(void * pSrc = &src[0])
+                {
+                    MemCpy(pDst, pSrc, src.Length);
+                }
+
+                return;
+            }
+            
             fixed(void * p = &src[0])
             {
                 memcpy_jit(new IntPtr(pDst), new IntPtr(p), src.Length);
